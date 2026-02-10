@@ -307,7 +307,10 @@
             // 2) Bloqueamos edición (revisor = solo lectura)
             bloquearInputs();
 
-            // 3) Convierte los inputs a parrafos
+            // 3) Ocultamos elementos sobrantes
+            ocultarElementos();
+
+            // 4) Convierte los inputs a parrafos
             convertirInputsAParrafos();
           })
           .catch((err) => {
@@ -426,15 +429,30 @@
           "#contenedor-cuestionario #btnGuardar",
         );
         if (btnGuardar) btnGuardar.style.display = "none";
-        
+      }
+
+     /* ============================================================
+      Ocultamos elementos que solo deberian ser visibles para el preparador
+      ============================================================ */
+      function ocultarElementos() {
         // Ocultar todos los .dropApoyo dentro de #contenedor-cuestionario
         const drops = document.querySelectorAll('#contenedor-cuestionario .contDrops');
         drops.forEach(el => {
           el.style.display = 'none';
         });
 
+        //Oculta el input para subir documentos como evidencia
+        const ocultarEvidencia = document.querySelectorAll('#contenedor-cuestionario .inputEvidencia')
+        ocultarEvidencia.forEach(el => {
+          el.style.display = 'none';
+        });
 
-      }
+        //Oculta el lavel de cada textarea
+        const ocultarLabel = document.querySelectorAll('#contenedor-cuestionario .labelComentarios')
+        ocultarLabel.forEach(el => {
+          el.style.display = 'none';
+        });
+       }
 
       /* ============================================================
        Cambia los inputs por parrafos para mejorar la lecutra
