@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Login</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div class="box">
+      <!-- Imagen de fondo-->
+      <div class="fondo">
+        <!-- Titulo de la tarjeta -->
+        <div class="top">
+          <img
+            src="https://sclconsultores.com.mx/imagenesRegistros/logo.svg"
+            alt="logo"
+            height="45px"
+            class="logo"
+          />
+          <h2>Inicio de Sesión</h2>
+        </div>
+        <!-- Texto de apoyo -->
+        <p class="intro">Sistema de Gestion de Calidad</p>
+
+        <form method="POST" action="php/validar_login.php">
+          <!-- Contenedor del usuario -->
+          <div class="campo">
+            <img
+              src="img/usuario.png"
+              alt="icono_usuario"
+              height="20px"
+              class="icono"
+            />
+            <input
+              type="text"
+              name="usuario"
+              placeholder="Usuario"
+              class="form-control"
+              required
+            />
+          </div>
+
+          <!-- Contenedor de contraseña -->
+          <div class="campo">
+            <img
+              src="img/contraseña.png"
+              alt="icono_contraseña"
+              height="20px"
+              class="icono"
+            />
+            <input
+              type="password"
+              name="password"
+              placeholder="Contraseña"
+              class="form-control"
+              required
+            />
+          </div>
+
+          <!-- Boton de acceso -->
+          <button class="btn btn-primary w-100">Acceder</button>
+          <!-- Inicio de invitados -->
+          <div class="invitado">
+            <a href="index3.html">Acceder como invitado</a>
+          </div>
+
+          <!-- <button class="btn btn-primary w-100">Entrar</button> -->
+        </form>
+      </div>
+    </div>
+  </body>
+</html>

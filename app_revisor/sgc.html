@@ -1,0 +1,923 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <!--
+    Pantalla de REVISOR (solo lectura).
+    Aquí NO se editan respuestas ni evidencias.
+    Lo único “editable” son las NOTAS del revisor (por pregunta) y el estado Resuelta/Pendiente.
+
+    Flujo general:
+    - Cargamos una sección (pagina_1.html, pagina_2.html, etc.)
+    - Precargamos respuestas/evidencias desde la BD
+    - Deshabilitamos inputs (modo lectura)
+    - Tranformamos los inputs a parrafos (para eliminar elementos de los inputs)
+    - Ponemos un botón 📝 en cada pregunta para abrir modal de notas
+    - Mostramos pendientes:
+      - Badge rojo en tabs (pendientes por sección)
+      - Badge rojo en cada botón 📝 (pendientes por pregunta)
+      - Badge rojo en el botón general 🚨 Pendientes (total general)
+    - Modal “Pendientes” muestra una lista con Ir -> te lleva a la pregunta y abre el modal de notas
+  -->
+  <title>SGC - Revisión de cuestionario</title>
+
+  <link rel="stylesheet" href="style.css" />
+  <link rel="icon" href="imagenes/logo mas chico _page-0003.png" />
+
+  <!-- Bootstrap para estilos, tabs, tooltips y modales -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet" />
+
+  <style>
+    /* Dropdown de usuario (idéntico concepto al index del revisor) */
+    .cont-drop { display:inline-block; position:relative; margin-left:12px; }
+    .usuario, .accion {
+      display:block;
+      padding:6px 16px;
+      color:#a3acc0;
+      text-decoration:none;
+      text-align:center;
+      margin:0;
+      border-radius:10px 10px 0 0;
+      user-select:none;
+      white-space:nowrap;
+    }
+    .accion { padding:6px 8px; border-radius:10px; cursor:pointer; }
+    .dropdown {
+      width:100%;
+      background:#323c55;
+      position:absolute;
+      z-index:999;
+      display:none;
+      border-radius:0 0 10px 10px;
+    }
+    .accion:hover, .usuario:hover { background:#323c55; color:#fff; }
+    .cont-drop:hover .dropdown { display:block; }
+
+    /* Botoncito de notas por pregunta (📝) */
+    .btn-nota {
+      position:absolute;
+      top:10px;
+      right:10px;
+      z-index:5;
+      line-height:1;
+      border: none;
+    }
+
+    /* Fondo del boton de notas */
+    .btn-outline-blue:hover{
+      background-color: #28334f;
+      border: #28334f;
+    }
+
+    /* Badge numérico encima del botón 📝 cuando hay pendientes */
+    .btn-nota[data-badge]::after {
+      content: attr(data-badge);
+      position:absolute;
+      top:-8px;
+      right:-8px;
+      background:#dc3545;
+      color:#fff;
+      border-radius:999px;
+      font-size:11px;
+      padding:1px 6px;
+      line-height:1.4;
+    }
+
+    /* Botón “Pendientes” en la barra */
+    .btn-pendientes {
+      border: 1px solid rgba(255,255,255,.35);
+      color: #fff;
+      background: transparent;
+      border-radius: 10px;
+      padding: 6px 10px;
+      font-size: 13px;
+      white-space: nowrap;
+      position: relative;
+    }
+    .btn-pendientes:hover { background: rgba(255,255,255,.10); }
+
+    /* Efecto para resaltar una pregunta cuando el usuario usa “Ir” desde el modal de pendientes */
+    .highlight-pregunta {
+      outline: 3px solid rgba(220,53,69,.35);
+      border-radius: 12px;
+      transition: outline-color .6s ease;
+    }
+  </style>
+</head>
+
+<body>
+  <!-- ============================================================
+       NAVBAR: tabs + botón pendientes + usuario
+       ============================================================ -->
+  <nav class="navbar navbar-expand-lg nav-tabs"
+       style="background-color:#28334f; justify-content:center; padding:9px 0; max-height:77px;">
+    <div class="container-fluid" style="width:100%; max-width:1100px; margin:0;">
+      <!-- Logo -->
+      <a class="bg-white rounded px-2 py-1" href="#" style="margin:8px 0; margin-left:7px">
+        <img src="https://sclconsultores.com.mx/imagenesRegistros/logo.svg" alt="logo" height="34" />
+      </a>
+
+      <!-- Tabs: cada tab carga pagina_X.html -->
+      <ul class="nav ms-4" style="width:70%">
+        <li class="nav-item" data-bs-toggle="tooltip" data-bs-placement="bottom"
+            data-bs-title="I.Información de la firma y proceso de valoración de riesgos">
+          <a class="nav-link active" href="#" onclick="cargarCuestionario(1); return false;">I</a>
+        </li>
+        <li class="nav-item" data-bs-toggle="tooltip" data-bs-placement="bottom"
+            data-bs-title="II. Gobierno corporativo y liderazgo">
+          <a class="nav-link" href="#" onclick="cargarCuestionario(2); return false;">II</a>
+        </li>
+        <li class="nav-item" data-bs-toggle="tooltip" data-bs-placement="bottom"
+            data-bs-title="III. Requerimientos de ética aplicables">
+          <a class="nav-link" href="#" onclick="cargarCuestionario(3); return false;">III</a>
+        </li>
+        <li class="nav-item" data-bs-toggle="tooltip" data-bs-placement="bottom"
+            data-bs-title="IV. Aceptación y continuidad...">
+          <a class="nav-link" href="#" onclick="cargarCuestionario(4); return false;">IV</a>
+        </li>
+        <li class="nav-item" data-bs-toggle="tooltip" data-bs-placement="bottom"
+            data-bs-title="V. Realización del encargo">
+          <a class="nav-link" href="#" onclick="cargarCuestionario(5); return false;">V</a>
+        </li>
+        <li class="nav-item" data-bs-toggle="tooltip" data-bs-placement="bottom"
+            data-bs-title="VI. Recursos">
+          <a class="nav-link" href="#" onclick="cargarCuestionario(6); return false;">VI</a>
+        </li>
+        <li class="nav-item" data-bs-toggle="tooltip" data-bs-placement="bottom"
+            data-bs-title="VII. Información y comunicación">
+          <a class="nav-link" href="#" onclick="cargarCuestionario(7); return false;">VII</a>
+        </li>
+        <li class="nav-item" data-bs-toggle="tooltip" data-bs-placement="bottom"
+            data-bs-title="VIII. Proceso de seguimiento...">
+          <a class="nav-link" href="#" onclick="cargarCuestionario(8); return false;">VIII</a>
+        </li>
+      </ul>
+
+      <!-- Botón Pendientes (total general aparece en el badge) -->
+      <button class="btn-pendientes me-2" type="button" onclick="abrirPendientes()">
+        🚨 Pendientes
+        <span id="badgeTotalPendientes"
+              class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger"
+              style="display:none;">
+          0
+        </span>
+      </button>
+
+      <!-- Usuario logueado -->
+      <div class="cont-drop">
+        <p class="usuario" id="lblUsuario">Cargando... ▼</p>
+        <div class="dropdown">
+          <a href="../index2.html" class="accion">Volver al listado</a>
+          <a href="../php/logout.php" class="accion">Cerrar sesión</a>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ============================================================
+       CONTENEDOR: aquí se inyectan las pagina_X.html
+       ============================================================ -->
+  <div class="seccion">
+    <form id="form-cuestionario">
+      <div id="contenedor-cuestionario" class="seccion" style="text-align:center;">
+        <!-- Aquí se carga pagina_1.html, pagina_2.html, etc. -->
+      </div>
+    </form>
+  </div>
+
+  <!-- ============================================================
+       MODAL: Notas por pregunta (Historial / Nueva)
+       ============================================================ -->
+  <div class="modal fade" id="modalNotas" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+      <div class="modal-content">
+
+        <div class="modal-header">
+          <div>
+            <h5 class="modal-title mb-0">Notas del revisor</h5>
+            <div class="text-muted small" id="modalNotasMeta">...</div>
+          </div>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+        </div>
+
+        <div class="modal-body">
+          <ul class="nav nav-tabs" id="tabsNotas" role="tablist">
+            <li class="nav-item" role="presentation">
+              <button class="nav-link active" id="tab-historial"
+                      data-bs-toggle="tab" data-bs-target="#pane-historial"
+                      type="button" role="tab">
+                Historial
+              </button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button class="nav-link" id="tab-nueva"
+                      data-bs-toggle="tab" data-bs-target="#pane-nueva"
+                      type="button" role="tab">
+                Nueva nota
+              </button>
+            </li>
+          </ul>
+
+          <div class="tab-content pt-3">
+            <div class="tab-pane fade show active" id="pane-historial" role="tabpanel">
+              <div id="historialNotas" class="vstack gap-2">
+                <div class="text-muted">Cargando...</div>
+              </div>
+            </div>
+
+            <div class="tab-pane fade" id="pane-nueva" role="tabpanel">
+              <label class="form-label fw-semibold">Escribe tu nota</label>
+              <textarea id="txtNuevaNota" class="form-control" rows="4" placeholder="Escribe la nota..."></textarea>
+
+              <div class="d-flex justify-content-end gap-2 mt-3">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+                  Cancelar
+                </button>
+                <button type="button" class="btn btn-dark" id="btnGuardarNota">
+                  Guardar nota
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-sm btn-outline-success" id="btnValidarRespuesta">Validar Respuesta</button>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================
+       MODAL: Vista global de Pendientes (Ir -> sección + pregunta + abrir notas)
+       ============================================================ -->
+  <div class="modal fade" id="modalPendientes" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+      <div class="modal-content">
+
+        <div class="modal-header">
+          <div>
+            <h5 class="modal-title mb-0">Pendientes por validar</h5>
+            <div class="text-muted small">
+              Aquí aparecen solo notas con estado <strong>Pendiente</strong>.
+            </div>
+          </div>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+        </div>
+
+        <div class="modal-body">
+          <div id="listaPendientes" class="vstack gap-2">
+            <div class="text-muted">Cargando...</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- Bootstrap JS (tooltips, tabs, modals) -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>
+
+  <script>
+    /* ============================================================
+       Datos básicos de la URL
+       (siempre conviene leerlos así para no depender de variables viejas)
+       ============================================================ */
+    const params = new URLSearchParams(window.location.search);
+    const cid = params.get("cid");
+    const folio = params.get("folio");
+
+    /* ============================================================
+       Variables de estado
+       ============================================================ */
+    let seccionActual = 1;
+    let modalNotas = null;
+    let modalPendientes = null;
+
+    /* Contexto del modal de notas (qué pregunta estamos revisando) */
+    let notaContext = { pregunta: null, seccion: null, cid: null, folio: null };
+
+    /* ============================================================
+       Cargar usuario desde sesión (y validar que sea revisor)
+       ============================================================ */
+    async function cargarUsuarioSesion() {
+      const resp = await fetch("../php/session_user.php", { cache: "no-store" });
+      const data = await resp.json();
+
+      if (!resp.ok || !data.ok) {
+        // Sin sesión: al login
+        window.location.href = "../login.html";
+        return;
+      }
+
+      // Si el rol no es revisor, lo mandamos a un inicio seguro
+      if (String(data.tipo_usuario || "").toLowerCase() !== "revisor") {
+        window.location.href = "../index.html";
+        return;
+      }
+
+      document.getElementById("lblUsuario").textContent = `${data.user_nombre} ▼`;
+    }
+
+    /* ============================================================
+       Deja bonita la pestaña activa (solo estilo)
+       ============================================================ */
+    function marcarActivo(numero) {
+      document.querySelectorAll(".nav-link").forEach(a => a.classList.remove("active"));
+      document.querySelectorAll(".nav-link")[numero - 1]?.classList.add("active");
+    }
+
+    /* ============================================================
+       Carga una sección completa (pagina_X.html)
+       ============================================================ */
+    function cargarCuestionario(numero) {
+      seccionActual = numero;
+
+      fetch(`pagina_${numero}.html`, { cache: "no-store" })
+        .then(r => r.text())
+        .then(async html => {
+          // Inyectamos el HTML de la sección
+          document.getElementById("contenedor-cuestionario").innerHTML = html;
+          marcarActivo(numero);
+
+          // 1) Precargamos respuestas y evidencias desde BD
+          await cargarRespuestasSeccion();
+
+          // 2) Bloqueamos edición (revisor = solo lectura)
+          bloquearInputs();
+
+          // 3) Convierte los inputs a parrafos
+          convertirInputsAParrafos();
+          
+          // 4) Ponemos botón 📝 en cada pregunta
+          inyectarBotonesNotas();
+          
+          // 5) Indicadores: tabs, botones por pregunta y total general
+          await marcarPendientesSecciones();
+          await marcarPendientesPreguntas();
+          await actualizarTotalPendientes();
+        })
+        .catch(err => {
+          console.error(err);
+          document.getElementById("contenedor-cuestionario").innerHTML =
+            "<p>Error al cargar el cuestionario.</p>";
+        });
+    }
+
+    /* ============================================================
+       Precargar respuestas + evidencias desde el backend del preparador
+       Endpoint: ../php/obtener_respuestas.php
+       ============================================================ */
+    async function cargarRespuestasSeccion() {
+      const seccion = `pagina_${seccionActual}`;
+
+      const url = new URL("../php/obtener_respuestas.php", window.location.href);
+      if (cid) url.searchParams.set("cid", cid);
+      if (folio) url.searchParams.set("folio", folio);
+      url.searchParams.set("seccion", seccion);
+
+      const resp = await fetch(url.toString(), { cache: "no-store" });
+      const data = await resp.json();
+
+      if (!resp.ok || !data.ok) {
+        console.error("Error al obtener respuestas:", data);
+        return;
+      }
+
+      // Creamos un mapa pregunta -> datos para buscar rápido
+      const mapa = new Map();
+      for (const r of data.respuestas) {
+        mapa.set(String(r.pregunta), r);
+      }
+
+      const form = document.getElementById("form-cuestionario");
+      const bloques = form.querySelectorAll(".pregunta[data-pregunta]");
+
+      bloques.forEach((b) => {
+        const num = b.getAttribute("data-pregunta");
+        const guardado = mapa.get(num);
+
+        const sel = b.querySelector(".respuesta");
+        const txt = b.querySelector(".comentarios");
+
+        // Pintamos respuesta y comentarios
+        if (guardado) {
+          if (sel) sel.value = guardado.respuesta ?? "";
+          if (txt) txt.value = guardado.comentarios ?? "";
+        } else {
+          if (sel) sel.value = "";
+          if (txt) txt.value = "";
+        }
+
+        // Pintamos evidencias
+        let evidencias = [];
+        if (guardado && guardado.nom_evidencia) {
+          try { evidencias = JSON.parse(guardado.nom_evidencia) || []; }
+          catch { evidencias = []; }
+        }
+
+        pintarEvidencias(b, evidencias);
+      });
+    }
+
+    /* ============================================================
+       Mostrar evidencias como links
+       Nota: aquí solo se ven/descargan; no se borran.
+       ============================================================ */
+    function pintarEvidencias(bloquePregunta, evidencias) {
+      const cont = bloquePregunta.querySelector(".evidencias-guardadas");
+      if (!cont) return;
+
+      if (!Array.isArray(evidencias) || evidencias.length === 0) {
+        cont.innerHTML = "<span class='text-muted'>Sin evidencias guardadas.</span>";
+        return;
+      }
+
+      const items = evidencias.map(ev => {
+        const name = escapeHtml(ev.name || "archivo");
+        const url = escapeHtml(ev.url || "#");
+        return `<li><a href="../${url}" target="_blank" rel="noopener">${name}</a></li>`;
+      }).join("");
+
+      cont.innerHTML = `
+        <div><strong>Evidencias guardadas:</strong></div>
+        <ul class="mb-0">${items}</ul>
+      `;
+    }
+
+    /* ============================================================
+       Bloquear inputs para que el revisor no modifique nada del cuestionario
+       ============================================================ */
+    function bloquearInputs() {
+      const form = document.getElementById("form-cuestionario");
+
+      form.querySelectorAll("select.respuesta, textarea.comentarios, input.evidencia").forEach(el => {
+        el.disabled = true;
+      });
+
+      // Si alguna plantilla trae el botón de “Guardar” del preparador, lo ocultamos
+      const btnGuardar = document.querySelector("#contenedor-cuestionario #btnGuardar");
+      if (btnGuardar) btnGuardar.style.display = "none";
+    }
+
+    /* ============================================================
+       Cambia los inputs por parrafos para mejorar la lecutra
+       ============================================================ */
+      function convertirInputsAParrafos() {
+        const form = document.getElementById("form-cuestionario");
+        const bloques = form.querySelectorAll(".pregunta[data-pregunta]");
+
+        bloques.forEach((b) => {
+          const sel = b.querySelector("select.respuesta");
+          const txt = b.querySelector("textarea.comentarios");
+
+          // ---- SELECT -> <p> ----
+          if (sel) {
+            // Texto visible del option seleccionado
+            const optionText =
+              sel.selectedOptions?.[0]?.textContent?.trim() || "";
+            const pSel = document.createElement("p");
+            pSel.className = "respuesta-p form-control-plaintext mb-2";
+            pSel.textContent = optionText || "—";
+
+            // Ocultamos el select (o podrías eliminarlo)
+            sel.style.display = "none";
+            sel.insertAdjacentElement("afterend", pSel);
+          }
+
+          // ---- TEXTAREA -> <p> ----
+          if (txt) {
+            const pTxt = document.createElement("p");
+            pTxt.className = "comentarios-p form-control-plaintext";
+            // respeta saltos de línea:
+            pTxt.style.whiteSpace = "pre-wrap";
+            pTxt.textContent = (txt.value || "").trim() || "—";
+
+            txt.style.display = "none";
+            txt.insertAdjacentElement("afterend", pTxt);
+          }
+        });
+      }
+
+    /* ============================================================
+       Insertar botón 📝 por pregunta (solo si no existe)
+       ============================================================ */
+    function inyectarBotonesNotas() {
+      document.querySelectorAll(".pregunta[data-pregunta]").forEach(b => {
+        if (b.querySelector(".btn-nota")) return;
+
+        b.style.position = "relative";
+
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "btn btn-sm btn-outline-blue btn-nota";
+        btn.textContent = "📝";
+        btn.title = "Notas del revisor";
+
+        const preguntaNum = b.getAttribute("data-pregunta");
+        btn.addEventListener("click", () => abrirModalNotas(preguntaNum));
+
+        b.appendChild(btn);
+      });
+    }
+
+    /* ============================================================
+       Modal de notas: abrir y cargar historial
+       ============================================================ */
+    async function abrirModalNotas(preguntaNum) {
+      if (!cid && !folio) {
+        alert("Falta cid/folio en la URL.");
+        return;
+      }
+
+      notaContext = {
+        pregunta: String(preguntaNum),
+        seccion: `pagina_${seccionActual}`,
+        cid,
+        folio
+      };
+
+      document.getElementById("modalNotasMeta").textContent =
+        `Cuestionario: ${folio || ("CID " + cid)} · Sección: ${notaContext.seccion} · Pregunta: ${notaContext.pregunta}`;
+
+      document.getElementById("txtNuevaNota").value = "";
+      document.getElementById("historialNotas").innerHTML = "<div class='text-muted'>Cargando...</div>";
+
+      if (!modalNotas) modalNotas = new bootstrap.Modal(document.getElementById("modalNotas"));
+      modalNotas.show();
+
+      // Por comodidad, abrimos el historial siempre
+      bootstrap.Tab.getOrCreateInstance(document.getElementById("tab-historial")).show();
+
+      await cargarHistorialNotas();
+    }
+
+    /* ============================================================
+       Traer historial de notas (por pregunta) y renderizarlo
+       Endpoint: ../php/obtener_notas.php?cid=..&seccion=..&pregunta=..
+       ============================================================ */
+    async function cargarHistorialNotas() {
+      const url = new URL("../php/obtener_notas.php", window.location.href);
+      url.searchParams.set("cid", notaContext.cid);
+      url.searchParams.set("seccion", notaContext.seccion);
+      url.searchParams.set("pregunta", notaContext.pregunta);
+
+      const resp = await fetch(url.toString(), { cache: "no-store" });
+      const data = await resp.json();
+
+      const cont = document.getElementById("historialNotas");
+
+      if (!resp.ok || !data.ok) {
+        console.error(data);
+        cont.innerHTML = "<div class='text-danger'>No se pudieron cargar las notas.</div>";
+        return;
+      }
+
+      if (!data.notas.length) {
+        cont.innerHTML = "<div class='text-muted'>Sin notas aún.</div>";
+        return;
+      }
+
+      cont.innerHTML = data.notas.map(n => {
+        const badge = Number(n.resuelta) === 1
+          ? "<span class='badge bg-success'>Resuelta</span>"
+          : "<span class='badge bg-warning text-dark'>Pendiente</span>";
+
+        const acciones = Number(n.resuelta) === 1
+          ? `<button class="btn btn-sm btn-outline-secondary" onclick="toggleNota(${n.id}, 0)">Marcar pendiente</button>`
+          : `<button class="btn btn-sm btn-outline-success" onclick="toggleNota(${n.id}, 1)">Marcar resuelta</button>`;
+
+        const resueltaMeta = Number(n.resuelta) === 1
+          ? `<div class="text-muted small mt-1">Resuelta por <strong>${escapeHtml(n.resuelta_por || "-")}</strong> · ${escapeHtml(n.resuelta_en || "-")}</div>`
+          : "";
+
+        return `
+          <div class="border rounded-3 p-3 bg-white">
+            <div class="d-flex align-items-start justify-content-between gap-2">
+              <div>
+                <div class="small text-muted">
+                  <strong>${escapeHtml(n.revisor_nombre || "")}</strong> · ${escapeHtml(n.creado_en || "")}
+                </div>
+                <div class="mt-1">${escapeHtml(n.nota || "")}</div>
+                ${resueltaMeta}
+              </div>
+              <div class="d-flex flex-column gap-2 align-items-end">
+                ${badge}
+                ${acciones}
+              </div>
+            </div>
+          </div>
+        `;
+      }).join("");
+    }
+
+    /* ============================================================
+       Guardar una nota nueva (solo guardar en BD, sin correo)
+       Endpoint: ../php/enviar_nota.php
+       ============================================================ */
+    document.getElementById("btnGuardarNota").addEventListener("click", async () => {
+      const nota = document.getElementById("txtNuevaNota").value.trim();
+
+      if (!nota) {
+        alert("Escribe una nota.");
+        return;
+      }
+
+      const fd = new FormData();
+      fd.append("cid", notaContext.cid);
+      fd.append("seccion", notaContext.seccion);
+      fd.append("pregunta", notaContext.pregunta);
+      fd.append("nota", nota);
+
+      const resp = await fetch("../php/enviar_nota.php", { method: "POST", body: fd });
+      const data = await resp.json();
+
+      if (!resp.ok || !data.ok) {
+        console.error(data);
+        alert(data.msg || "No se pudo guardar la nota.");
+        return;
+      }
+
+      document.getElementById("txtNuevaNota").value = "";
+
+      // Volvemos al historial y lo recargamos
+      bootstrap.Tab.getOrCreateInstance(document.getElementById("tab-historial")).show();
+      await cargarHistorialNotas();
+
+      // Refrescamos indicadores de pendientes
+      await marcarPendientesSecciones();
+      await marcarPendientesPreguntas();
+      await actualizarTotalPendientes();
+      await refrescarModalPendientesSiEstaAbierto();
+    });
+
+    /* ============================================================
+       Cambiar estado de una nota (resuelta / pendiente)
+       Endpoint: ../php/toggle_nota.php
+       (Se llama desde onclick dentro del historial renderizado)
+       ============================================================ */
+    async function toggleNota(id, resuelta) {
+      const fd = new FormData();
+      fd.append("id", String(id));
+      fd.append("resuelta", String(resuelta));
+
+      const resp = await fetch("../php/toggle_nota.php", { method: "POST", body: fd });
+      const data = await resp.json();
+
+      if (!resp.ok || !data.ok) {
+        console.error(data);
+        alert(data.msg || "No se pudo actualizar el estado.");
+        return;
+      }
+
+      await cargarHistorialNotas();
+      await marcarPendientesSecciones();
+      await marcarPendientesPreguntas();
+      await actualizarTotalPendientes();
+      await refrescarModalPendientesSiEstaAbierto();
+    }
+    window.toggleNota = toggleNota;
+
+    /* ============================================================
+       Pendientes por sección (badges en tabs)
+       Endpoint: ../php/pendientes_notas.php?cid=...
+       ============================================================ */
+    async function marcarPendientesSecciones() {
+      if (!cid) return;
+
+      const url = new URL("../php/pendientes_notas.php", window.location.href);
+      url.searchParams.set("cid", cid);
+
+      const resp = await fetch(url.toString(), { cache: "no-store" });
+      const data = await resp.json();
+
+      if (!resp.ok || !data.ok) {
+        console.error("Error pendientes secciones:", data);
+        return;
+      }
+
+      const mapa = data.pendientes_por_seccion || {};
+
+      // Limpiamos badges anteriores para que no se acumulen
+      document.querySelectorAll(".nav-link .badge").forEach(b => b.remove());
+
+      for (let i = 1; i <= 8; i++) {
+        const key = `pagina_${i}`;
+        const pendientes = Number(mapa[key] || 0);
+        if (pendientes > 0) {
+          const tab = document.querySelectorAll(".nav-link")[i - 1];
+          if (!tab) continue;
+          const badge = document.createElement("span");
+          badge.className = "badge bg-danger ms-2";
+          badge.textContent = pendientes;
+          tab.appendChild(badge);
+        }
+      }
+    }
+
+    /* ============================================================
+       Pendientes por pregunta (badge en botón 📝)
+       Endpoint: ../php/pendientes_notas.php?cid=...&seccion=pagina_X
+       ============================================================ */
+    async function marcarPendientesPreguntas() {
+      if (!cid) return;
+
+      const seccion = `pagina_${seccionActual}`;
+      const url = new URL("../php/pendientes_notas.php", window.location.href);
+      url.searchParams.set("cid", cid);
+      url.searchParams.set("seccion", seccion);
+
+      const resp = await fetch(url.toString(), { cache: "no-store" });
+      const data = await resp.json();
+
+      if (!resp.ok || !data.ok) {
+        console.error("Error pendientes preguntas:", data);
+        return;
+      }
+
+      const mapa = data.pendientes_por_pregunta || {};
+
+      document.querySelectorAll(".pregunta[data-pregunta]").forEach(b => {
+        const p = b.getAttribute("data-pregunta");
+        const btn = b.querySelector(".btn-nota");
+        if (!btn) return;
+
+        const pendientes = Number(mapa[p] || 0);
+
+        btn.classList.remove("btn-outline-danger");
+        btn.classList.add("btn-outline-blue");
+        btn.removeAttribute("data-badge");
+
+        if (pendientes > 0) {
+          btn.classList.remove("btn-outline-blue");
+          btn.classList.add("btn-outline-danger");
+          btn.setAttribute("data-badge", String(pendientes));
+        }
+      });
+    }
+
+    /* ============================================================
+       Total general de pendientes (badge en el botón 🚨 Pendientes)
+       Endpoint: ../php/pendientes_notas.php?cid=...
+       ============================================================ */
+    async function actualizarTotalPendientes() {
+      if (!cid) return;
+
+      const url = new URL("../php/pendientes_notas.php", window.location.href);
+      url.searchParams.set("cid", cid);
+
+      const resp = await fetch(url.toString(), { cache: "no-store" });
+      const data = await resp.json();
+
+      const badge = document.getElementById("badgeTotalPendientes");
+      if (!badge) return;
+
+      if (!resp.ok || !data.ok) {
+        console.error("Error total pendientes:", data);
+        badge.style.display = "none";
+        return;
+      }
+
+      const total = Number(data.total_pendientes || 0);
+
+      if (total > 0) {
+        badge.textContent = total;
+        badge.style.display = "inline-block";
+      } else {
+        badge.style.display = "none";
+      }
+    }
+
+    /* ============================================================
+       Modal de pendientes (vista global)
+       - Se apoya en listar_pendientes.php (agrupa por sección/pregunta)
+       ============================================================ */
+    async function abrirPendientes() {
+      if (!cid) {
+        alert("Falta cid en la URL.");
+        return;
+      }
+
+      if (!modalPendientes) modalPendientes = new bootstrap.Modal(document.getElementById("modalPendientes"));
+
+      document.getElementById("listaPendientes").innerHTML = "<div class='text-muted'>Cargando...</div>";
+      modalPendientes.show();
+
+      await cargarListaPendientes();
+    }
+
+    async function cargarListaPendientes() {
+      const url = new URL("../php/listar_pendientes.php", window.location.href);
+      url.searchParams.set("cid", cid);
+
+      const resp = await fetch(url.toString(), { cache: "no-store" });
+      const data = await resp.json();
+
+      const cont = document.getElementById("listaPendientes");
+
+      if (!resp.ok || !data.ok) {
+        console.error(data);
+        cont.innerHTML = "<div class='text-danger'>No se pudieron cargar los pendientes.</div>";
+        return;
+      }
+
+      if (!data.pendientes.length) {
+        cont.innerHTML = "<div class='text-muted'>No hay notas pendientes 🎉</div>";
+        return;
+      }
+
+      cont.innerHTML = data.pendientes.map(item => {
+        const sec = escapeHtml(item.seccion);
+        const preg = escapeHtml(item.pregunta);
+        const n = Number(item.pendientes || 0);
+        const ultima = escapeHtml(item.ultima_nota || "-");
+
+        return `
+          <div class="border rounded-3 p-3 bg-white">
+            <div class="d-flex justify-content-between align-items-start gap-2">
+              <div>
+                <div class="fw-semibold">Sección: <span class="mono">${sec}</span> · Pregunta: <strong>${preg}</strong></div>
+                <div class="text-muted small">Pendientes: <strong>${n}</strong> · Última nota: ${ultima}</div>
+              </div>
+              <button class="btn btn-sm btn-danger" type="button"
+                      onclick="irAPregunta('${sec.replace(/'/g,"\\'")}', '${preg.replace(/'/g,"\\'")}')">
+                Ir
+              </button>
+            </div>
+          </div>
+        `;
+      }).join("");
+    }
+
+    /* ============================================================
+       Ir a pregunta:
+       - Cierra modal pendientes
+       - Cambia a la sección indicada
+       - Hace scroll a la pregunta
+       - Abre modal de notas de esa pregunta
+       ============================================================ */
+    async function irAPregunta(seccionStr, preguntaNum) {
+      const numSeccion = parseInt(String(seccionStr).replace("pagina_", ""), 10);
+      if (!numSeccion || numSeccion < 1 || numSeccion > 8) return;
+
+      if (modalPendientes) modalPendientes.hide();
+
+      // Cargamos sección y esperamos un momento para que el DOM se pinte
+      await new Promise(resolve => {
+        cargarCuestionario(numSeccion);
+        setTimeout(resolve, 250);
+      });
+
+      // Scroll al bloque de pregunta
+      const el = document.querySelector(`.pregunta[data-pregunta="${preguntaNum}"]`);
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "start" });
+        el.classList.add("highlight-pregunta");
+        setTimeout(() => el.classList.remove("highlight-pregunta"), 1800);
+      }
+
+      // Abrimos el modal de notas de esa pregunta
+      setTimeout(() => abrirModalNotas(preguntaNum), 400);
+    }
+    window.irAPregunta = irAPregunta;
+
+    /* ============================================================
+       Si el modal de pendientes está abierto y cambia algo (nota resuelta/pendiente),
+       lo refrescamos para que el listado se mantenga actualizado.
+       ============================================================ */
+    async function refrescarModalPendientesSiEstaAbierto() {
+      const el = document.getElementById("modalPendientes");
+      if (!el) return;
+      const visible = el.classList.contains("show");
+      if (visible) await cargarListaPendientes();
+    }
+
+    /* ============================================================
+       Escape HTML básico para imprimir texto de BD sin riesgos
+       ============================================================ */
+    function escapeHtml(str) {
+      return String(str ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
+
+    /* ============================================================
+       Arranque:
+       - Tooltips
+       - Sesión/rol
+       - Carga sección 1
+       ============================================================ */
+    document.addEventListener("DOMContentLoaded", async () => {
+      document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => new bootstrap.Tooltip(el));
+      await cargarUsuarioSesion();
+      cargarCuestionario(1);
+    });
+  </script>
+</body>
+</html>

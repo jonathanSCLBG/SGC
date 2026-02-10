@@ -1,0 +1,181 @@
+/* Propiedades generales de la página */
+body {
+  margin: 0;
+  font-family: "Roboto Mono", "Segoe UI", Roboto;
+  font-size: 16px;
+  font-weight: 300;
+}
+/* Propiedades del texto seleccionado por el mouse */
+*::selection {
+  background-color: #28334f;
+  color: #fff;
+}
+
+/* Bara de navegación */
+.nav {
+  width: 100%;
+  background-color: #28334f;
+  margin: 0;
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  border-bottom: 1px solid #e0e0e0;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+  color: #f0f0f0;
+}
+/* Enlaces de la barra de navegación */
+.nav-link {
+  color: #fff !important;
+}
+/* Enlaces activos en la barra de navegación */
+.active {
+  color: #28334f !important;
+}
+/* Contenedor del dop down */
+.cont-drop {
+  display: inline-block;
+  position: relative;
+  border: none;
+  background: transparent;
+  padding: 0;
+}
+/* Campo de usuario */
+.usuario {
+  display: block;
+  padding: 6px 25px;
+  color: #a3acc0;
+  text-align: center;
+  margin: 0;
+  border-radius: 10px 10px 0 0;
+}
+/* Campo de cierre de sesión */
+.accion {
+  display: block;
+  padding: 6px 5px;
+  color: #a3acc0;
+  text-decoration: none;
+  text-align: center;
+  border-radius: 10px;
+}
+/* Drop down */
+.dropdown {
+  width: 100%;
+  background: #323c55;
+  position: absolute;
+  z-index: 3;
+  display: none;
+  border-radius: 0 0 10px 10px;
+}
+/* Campo de usuario y cierre de sesion al pasar el mouse encima de ellos */
+.accion:hover,
+.usuario:hover {
+  background: #323c55;
+  color: #fff;
+}
+/* Comportamiento del dop down al pasa el mouse encima del contenedor */
+.cont-drop:hover .dropdown {
+  display: block;
+  position: absolute;
+  top: 100%;
+  right: 0px;
+}
+
+/* Contenedor del cuestionario */
+.seccion {
+  width: 100%;
+  max-width: 1100px;
+  margin: 0;
+  margin: auto;
+  padding: 15px;
+}
+/* Contenedor de cada pregunta */
+.box {
+  font-weight: 400;
+  width: 100%;
+  min-width: 350px;
+  margin: 0 10px;
+  margin: auto;
+  padding: 10px 10px;
+  display: flex;
+  flex-wrap: wrap;
+  border-radius: 6px;
+}
+/* Sombreado escalado de las preguntas */
+.box:nth-child(2n) {
+  background: linear-gradient(to left, transparent, #9eb5ef77);
+}
+
+/* Divisiones */
+.division {
+  background: #28334f;
+  color: #ffffff;
+  padding: 0;
+  margin: 20px 0 4px 0;
+  border-radius: 6px 20px 20px 6px;
+  display: flex;
+  justify-content: start;
+  align-items: center;
+  font-size: 18px;
+  font-weight: 600;
+  position: sticky;
+  top: 0;
+  z-index: 3;
+}
+.division p {
+  margin: 10px 20px;
+}
+
+/* Campo de preguntas */
+.preguntas {
+  width: 90%;
+}
+
+/* Propiedades de las respuestas */
+.input-group{
+  border-bottom: 2px solid #323c55 !important;
+  padding-bottom: 10px !important;
+  position: relative !important;
+}
+.input-group-text {
+  font-weight: bold !important;
+  border: none !important;
+  background: transparent !important;
+}
+.respuesta-p{
+  position: absolute !important;
+  left: 110px;
+}
+
+/* Propiedades de los comentarios */
+.form-floating {
+  border-bottom: 2px solid #323c55;
+  padding-bottom: 10px !important;
+  background: transparent !important;
+}
+.encabezado-comentario{
+  font-weight: bold;
+  margin-left: 12px;
+  margin-bottom: 0;
+  padding-bottom: 0;
+}
+.comentarios-p{
+  margin: 5px 0 0 12px;
+  padding: 0 !important;
+}
+
+/* Campo de evidencias */
+.evidencias-guardadas{
+  margin-left: 12px;
+}
+.evidencias-guardadas a{
+  text-decoration: none;
+  font-weight: 500;
+  color: #28334f;
+  padding: 4px 8px;
+  border-radius: 12px;
+  transition: all 500ms ease-out;
+}
+.evidencias-guardadas a:hover{
+  background-color: #28334f;
+  color: #fff;
+}

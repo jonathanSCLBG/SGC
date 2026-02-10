@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SGC - Revisión de cuestionarios</title>
+
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+
+    <style>
+      body { background: #f6f7fb; }
+
+      .topbar { background: #28334f; color: #fff; }
+
+      .cont-drop { display: inline-block; position: relative; }
+      .usuario, .accion {
+        display: block;
+        padding: 6px 25px;
+        color: #a3acc0;
+        text-decoration: none;
+        text-align: center;
+        margin: 0;
+        border-radius: 10px 10px 0 0;
+        cursor: default;
+        user-select: none;
+        white-space: nowrap;
+      }
+      .accion { padding: 6px 5px; border-radius: 10px; cursor: pointer; }
+      .dropdown {
+        width: 100%;
+        background: #323c55;
+        position: absolute;
+        z-index: 999;
+        display: none;
+        border-radius: 0 0 10px 10px;
+      }
+      .accion:hover, .usuario:hover { background: #323c55; color: #fff; }
+      .cont-drop:hover .dropdown { display: block; }
+
+      .card-shadow {
+        box-shadow: 0 8px 24px rgba(0,0,0,.08);
+        border: 0;
+        border-radius: 14px;
+      }
+
+      .mono {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      }
+
+      .footer {
+        margin: auto;
+        width: 100%;
+        max-width: 1100px;
+        text-align: center;
+        color: #1f2937;
+        padding: 18px 8px;
+      }
+    </style>
+  </head>
+
+  <body>
+    <!-- TOP BAR -->
+    <div class="topbar py-3">
+      <div
+        class="container d-flex align-items-center justify-content-between"
+        style="display:flex; justify-content:center; align-items:center; width:100%; max-width:1100px;"
+      >
+        <div class="d-flex align-items-center gap-3">
+          <div class="bg-white rounded px-2 py-1">
+            <img
+              src="https://sclconsultores.com.mx/imagenesRegistros/logo.svg"
+              alt="logo"
+              height="34"
+            />
+          </div>
+          <div>
+            <div class="fw-semibold">Sistema de Gestión de Calidad</div>
+            <div class="small opacity-75">Revisión de cuestionarios</div>
+          </div>
+        </div>
+
+        <!-- Usuario -->
+        <div class="cont-drop">
+          <p class="usuario" id="lblUsuario">Cargando... ▼</p>
+          <div class="dropdown">
+            <a href="php/logout.php" class="accion">Cerrar Sesión</a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CONTENIDO -->
+    <div
+      class="container my-4"
+      style="
+        display:flex;
+        justify-content:center;
+        width:100%;
+        max-width:1100px;
+        height:70vh;
+        border-radius:14px;
+        box-shadow:10px 18px 45px #111827;
+        overflow:hidden;
+        padding:0;
+      "
+    >
+      <div class="card card-shadow" style="width:100%">
+        <div class="card-body" style="padding:0">
+          <div
+            style="
+              display:flex;
+              justify-content:space-between;
+              align-items:center;
+              background-color:#28334f;
+            "
+          >
+            <h5
+              class="card-title mb-3"
+              style="margin:0; padding:20px; color:#f6f7fb"
+            >
+              Cuestionarios para revisar
+            </h5>
+
+            
+          </div>
+
+          <div class="table-responsive" style="margin:10px 10px">
+            <table class="table table-striped table-hover align-middle mb-0">
+              <thead class="table-dark">
+                <tr>
+                  <th>ID</th>
+                  <th>Folio</th>
+                  <th>Creación</th>
+                  <th>Vencimiento</th>
+                  <th>Estatus</th>
+                  <th>Creador</th>
+                  <th>Última modificación</th>
+                  <th style="width: 160px">Acción</th>
+                </tr>
+              </thead>
+
+              <tbody id="tbodyCuestionarios">
+                <tr>
+                  <td colspan="8" class="text-center text-muted">Cargando...</td>
+                </tr>
+              </tbody>
+
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer" role="contentinfo">
+      <small>
+        © 2026 SCL Consultores ·
+        <a href="" style="text-decoration: none; color: inherit">#Política de privacidad</a>
+        ·
+        <a href="" style="text-decoration: none; color: inherit">Términos</a>
+      </small>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+      function escapeHtml(str) {
+        return String(str ?? "")
+          .replaceAll("&", "&amp;")
+          .replaceAll("<", "&lt;")
+          .replaceAll(">", "&gt;")
+          .replaceAll('"', "&quot;")
+          .replaceAll("'", "&#039;");
+      }
+
+      // =========================
+      // Usuario en sesión (y validar rol revisor)
+      // =========================
+      async function cargarUsuarioSesion() {
+        try {
+          const resp = await fetch("php/session_user.php", { cache: "no-store" });
+          const data = await resp.json();
+
+          if (!resp.ok || !data.ok) {
+            window.location.href = "login.html";
+            return;
+          }
+
+          // Validar rol revisor
+          if (String(data.tipo_usuario || "").toLowerCase() !== "revisor") {
+            // Redirige según rol (ajusta si tu app usa otras rutas)
+            if (String(data.tipo_usuario || "").toLowerCase() === "preparador") {
+              window.location.href = "index3.html";
+            } else {
+              window.location.href = "login.html";
+            }
+            return;
+          }
+
+          document.getElementById("lblUsuario").textContent = `${data.user_nombre} ▼`;
+
+        } catch (e) {
+          console.error(e);
+          document.getElementById("lblUsuario").textContent = "Usuario ▼";
+        }
+      }
+
+      // =========================
+      // Tabla cuestionarios
+      // =========================
+      async function cargarTablaCuestionarios() {
+        const tbody = document.getElementById("tbodyCuestionarios");
+        tbody.innerHTML = `<tr><td colspan="8" class="text-center text-muted">Cargando...</td></tr>`;
+
+        try {
+          const resp = await fetch("php/listar_cuestionarios.php", { cache: "no-store" });
+          const data = await resp.json();
+
+          if (!resp.ok || !data.ok) {
+            tbody.innerHTML = `<tr><td colspan="8" class="text-center text-danger">Error al cargar</td></tr>`;
+            return;
+          }
+
+          if (!data.cuestionarios.length) {
+            tbody.innerHTML = `<tr><td colspan="8" class="text-center text-muted">No hay cuestionarios</td></tr>`;
+            return;
+          }
+
+          tbody.innerHTML = data.cuestionarios.map(q => {
+            const est = String(q.estatus || "").toLowerCase();
+            const badge =
+              est === "abierto" ? "bg-success" :
+              est === "cerrado" ? "bg-secondary" :
+              "bg-warning text-dark";
+
+            const link = `app_revisor/sgc.html?cid=${q.id}&folio=${encodeURIComponent(q.folio)}`;
+
+            return `
+              <tr>
+                <td>${q.id}</td>
+                <td class="mono"><strong>${escapeHtml(q.folio)}</strong></td>
+                <td>${escapeHtml(q.fecha_creacion)}</td>
+                <td>${escapeHtml(q.fecha_vencimiento)}</td>
+                <td><span class="badge ${badge}">${escapeHtml(q.estatus)}</span></td>
+                <td>${escapeHtml(q.creado_por || "-")}</td>
+                <td>
+                  <div class="small">
+                    <div><strong>${escapeHtml(q.actualizado_por || "-")}</strong></div>
+                    <div class="text-muted">${escapeHtml(q.actualizado_en || "-")}</div>
+                  </div>
+                </td>
+                <td>
+                  <a href="${link}" class="btn btn-dark btn-sm">Revisar</a>
+                </td>
+              </tr>
+            `;
+          }).join("");
+
+        } catch (e) {
+          console.error(e);
+          tbody.innerHTML = `<tr><td colspan="8" class="text-center text-danger">Error de servidor</td></tr>`;
+        }
+      }
+
+      document.addEventListener("DOMContentLoaded", async () => {
+        await cargarUsuarioSesion();
+        await cargarTablaCuestionarios();
+      });
+    </script>
+  </body>
+</html>
