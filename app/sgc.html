@@ -31,30 +31,6 @@
   <link rel="stylesheet" href="style.css" />
   
   <style>
-    /* Dropdown usuario */
-    .cont-drop { display:inline-block; position:relative; margin-left:12px; }
-    .usuario, .accion {
-      display:block;
-      padding:6px 16px;
-      color:#a3acc0;
-      text-decoration:none;
-      text-align:center;
-      margin:0;
-      border-radius:10px 10px 0 0;
-      user-select:none;
-      white-space:nowrap;
-    }
-    .accion { padding:6px 8px; border-radius:10px; cursor:pointer; }
-    .dropdown { width:100%; background:#323c55; position:absolute; z-index:999; display:none; border-radius:0 0 10px 10px; }
-    .accion:hover, .usuario:hover { background:#323c55; color:#fff; }
-    .cont-drop:hover .dropdown { display:block; }
-
-    /* El nombre del usuario se usa como “botón” para abrir el modal de pendientes */
-    .usuario {
-      cursor: pointer;
-      position: relative;
-    }
-
     /* Badge total general: se muestra arriba a la derecha del nombre del usuario */
     #badgeTotalPendientes {
       position: absolute;

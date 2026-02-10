@@ -38,6 +38,7 @@ body {
   border: none;
   background: transparent;
   padding: 0;
+  margin-left: 12px;
 }
 /* Campo de usuari y cierre de sesión */
 .usuario {
@@ -47,7 +48,11 @@ body {
   text-align: center;
   margin: 0;
   border-radius: 10px 10px 0 0;
+  cursor: pointer;
+  position: relative;
+  white-space:nowrap;
 }
+/* Campo de cierre de sesión */
 .accion {
   display: block;
   padding: 6px 5px;
@@ -79,45 +84,6 @@ body {
   right: 0px;
 }
 
-/* Conenedor de la notificacion */
-.cont-badge {
-  border: none;
-  background: transparent;
-  display: flex;
-  position: relative;
-  top: -4px;
-}
-/* Title del contenedor del Badge */
-[data-tooltip]:hover:after {
-  content: attr(data-tooltip); /* Muestra el texto del atributo */
-  background-color: #333e;
-  color: #fff;
-  font-size: 14px;
-  padding: 5px 10px;
-  border-radius: 4px;
-  position: absolute; /* Comando para manipular la posicion del elemento */
-  bottom: -125%; /* Posición vertical */
-  left: 50%; /* Posicion horizontal */
-  transform: translateX(-50%); /* Centrado del texto */
-  white-space: nowrap; /* Evita que el texto se divida */
-}
-/* Notificacion */
-.notificacion {
-  width: 18px;
-  height: 18px;
-  border-radius: 50% !important;
-  font-size: 11px;
-  font-weight: 700;
-  background: #fff;
-  /* background: #a3acc0; */
-  color: #4f4428 !important;
-  position: relative;
-  top: -10px;
-  display: flex !important;
-  justify-content: center;
-  align-items: center;
-}
-
 /* Contenedor del cuestionario */
 .seccion {
   width: 100%;
@@ -143,10 +109,6 @@ body {
   background: linear-gradient(to left, transparent, #9eb5ef77);
 }
 
-span {
-  font-weight: bold;
-}
-
 /* Divisiones */
 .division {
   background: #28334f;
@@ -166,13 +128,14 @@ span {
 .division p {
   margin: 10px 20px;
 }
+
 /* Campo de preguntas */
 .preguntas {
   width: 90%;
 }
 
 /* Contenedor de los drops */
-.cont-drops {
+.contDrops {
   margin-top: 15px;
   margin-left: 15px;
   cursor: pointer;
@@ -184,6 +147,7 @@ span {
   width: 25%;
   margin: 0;
 }
+/* Notas de apoyo */
 .nota {
   display: block;
   padding: 0;
@@ -197,12 +161,14 @@ span {
   transition: all 600ms ease;
   font-size: 16px !important;
 }
+/* Contenido de las notas de apoyo */
 .nota p,
 .nota #help2 {
   margin: 0;
   display: none;
   font-size: 16px;
 }
+/* Transiciolnes de las notas */
 .nota:hover {
   background-color: #28334f;
   padding: 5px;
@@ -215,6 +181,7 @@ span {
 .nota:hover #help1 {
   display: none;
 }
+/* Texto de la nota de apoyo */
 .nota_contenido {
   display: block;
   padding: 0;
