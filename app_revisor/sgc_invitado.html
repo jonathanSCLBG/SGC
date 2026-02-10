@@ -425,12 +425,13 @@
           "#contenedor-cuestionario #btnGuardar",
         );
         if (btnGuardar) btnGuardar.style.display = "none";
+        
+        // Ocultar todos los .dropApoyo dentro de #contenedor-cuestionario
+        const drops = document.querySelectorAll('#contenedor-cuestionario .contDrops');
+        drops.forEach(el => {
+          el.style.display = 'none';
+        });
 
-        // Si alguna plantilla trae el dropdown de apoyo para el preparador, lo ocultamos
-        const dropApoyo = document.querySelector(
-          "#contenedor-cuestionario #dropApoyo",
-        );
-        if (dropApoyo) dropApoyo.style.display = "none";
 
       }
 
