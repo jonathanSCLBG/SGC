@@ -81,6 +81,60 @@
       border-radius: 12px;
       transition: outline-color .6s ease;
     }
+
+    /* =========================
+   PREPARADOR: pregunta validada (verde)
+   ========================= */
+    .pregunta-validada {
+      border: 2px solid #198754 !important;
+      border-radius: 12px;
+      background: rgba(25, 135, 84, 0.06);
+    }
+
+    /* Chip/badge en la esquina */
+    .badge-validada {
+      position: absolute;
+      bottom: 10px;
+      right: 10px;
+      background: #198754;
+      color: #fff;
+      border-radius: 999px;
+      font-size: 12px;
+      padding: 3px 10px;
+      line-height: 1.2;
+    }
+
+    /* Botón guardar por pregunta */
+    .btn-guardar-pregunta {
+      position: absolute;
+      bottom: 10px;
+      right: 110px; /* para que no choque con el badge verde */
+      z-index: 6;
+
+      .pregunta-bloqueada {
+  opacity: 0.96;
+}
+
+.pregunta-bloqueada .respuesta,
+.pregunta-bloqueada .comentarios,
+.pregunta-bloqueada .evidencia {
+  background-color: #f3f4f6 !important;
+  cursor: not-allowed;
+}
+
+.pregunta-bloqueada::after {
+  content: "Pregunta validada por el revisor";
+  display: inline-block;
+  margin-top: 10px;
+  padding: 4px 10px;
+  font-size: 12px;
+  border-radius: 999px;
+  background: #d1fae5;
+  color: #065f46;
+  font-weight: 600;
+}
+    }
+
   </style>
 </head>
 
@@ -209,665 +263,21 @@
     </div>
   </div>
 
-  <!-- Bootstrap JS (tooltips, modals) -->
+    <!-- Bootstrap JS (tooltips, modals) -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>
 
-  <script>
-    /* ============================================================
-       1) Parámetros URL (cid y folio siempre vienen aquí)
-          Ejemplo: sgc.html?cid=15&folio=SCL-140448
-       ============================================================ */
-    const params = new URLSearchParams(window.location.search);
-    const cidParam = params.get("cid");
-    const folioParam = params.get("folio");
+  <!-- Shared -->
+  <script defer src="js/shared/utils.js"></script>
+
+  <!-- SGC -->
+  <script defer src="js/sgc/state.js"></script>
+  <script defer src="js/sgc/session.js"></script>
+  <script defer src="js/sgc/cuestionario.js"></script>
+  <script defer src="js/sgc/notas.js"></script>
+  <script defer src="js/sgc/pendientes.js"></script>
+  <script defer src="js/sgc/main.js"></script>
+  <script defer src="js/sgc/guardar_seccion.js"></script>
 
-    /* ============================================================
-       2) Estado básico de pantalla
-       ============================================================ */
-    let seccionActual = 1;
-    let modalNotas = null;
-    let modalPendientes = null;
 
-    /* Contexto del modal de notas (pregunta/sección actual) */
-    let notaContext = { pregunta: null, seccion: null, cid: null, folio: null };
-
-    /* ============================================================
-       3) Escape HTML (si algo viene de BD y se imprime en HTML)
-       ============================================================ */
-    function escapeHtml(str) {
-      return String(str ?? "")
-        .replaceAll("&", "&amp;")
-        .replaceAll("<", "&lt;")
-        .replaceAll(">", "&gt;")
-        .replaceAll('"', "&quot;")
-        .replaceAll("'", "&#039;");
-    }
-
-    /* ============================================================
-       4) Usuario en sesión (opción B):
-          - se muestra el nombre real del usuario
-          - si no hay sesión, se manda al login
-       ============================================================ */
-    async function cargarUsuarioSesion() {
-      try {
-        const resp = await fetch("../php/session_user.php", { cache: "no-store" });
-        const data = await resp.json();
-
-        if (!resp.ok || !data.ok) {
-          window.location.href = "../login.html";
-          return;
-        }
-
-        // Se actualiza el texto principal manteniendo el badge pegado
-        document.getElementById("lblUsuario").childNodes[0].textContent = `${data.user_nombre} ▼ `;
-      } catch (e) {
-        console.error(e);
-        document.getElementById("lblUsuario").childNodes[0].textContent = `Usuario ▼ `;
-      }
-    }
-
-    /* ============================================================
-       5) Cargar sección (pagina_X.html) dentro del contenedor
-          Esto se hace cada vez que cambias de tab.
-       ============================================================ */
-    function cargarCuestionario(numero) {
-      seccionActual = numero;
-
-      fetch(`pagina_${numero}.html`, { cache: "no-store" })
-        .then(r => r.text())
-        .then(async html => {
-          document.getElementById("contenedor-cuestionario").innerHTML = html;
-
-          // Marcamos tab activo
-          marcarActivo(numero);
-
-          // Enlazamos el botón de guardar de la plantilla cargada (si existe)
-          engancharGuardar();
-
-          // Precargamos respuestas/evidencias
-          await cargarRespuestasSeccion();
-
-          // Inyectamos botón 📝 por pregunta (solo lectura de notas)
-          inyectarBotonesNotas();
-
-          // Ocultamos el label que se agregró para los perfiles de revisor e invitado
-          ocultarParrafoComentarios();
-
-          // Pintamos pendientes (tabs, preguntas, total)
-          await marcarPendientesSecciones();
-          await marcarPendientesPreguntas();
-          await actualizarTotalPendientes();
-        })
-        .catch(err => {
-          console.error(err);
-          document.getElementById("contenedor-cuestionario").innerHTML =
-            "<p>Error al cargar el cuestionario.</p>";
-        });
-    }
-
-    /* ============================================================
-       6) Pestaña activa (solo estética)
-       ============================================================ */
-    function marcarActivo(numero) {
-      document.querySelectorAll(".nav-link").forEach(a => a.classList.remove("active"));
-      document.querySelectorAll(".nav-link")[numero - 1]?.classList.add("active");
-    }
-
-    /* ============================================================
-       7) Conectar el botón Guardar de la sección cargada
-          Cada pagina_X.html trae un botón con id="btnGuardar".
-       ============================================================ */
-    function engancharGuardar() {
-      const btn = document.querySelector("#contenedor-cuestionario #btnGuardar");
-      if (!btn) return;
-      btn.onclick = () => guardarSeccion();
-    }
-
-    /* ============================================================
-       8) Guardar respuestas de la sección actual
-          IMPORTANTÍSIMO: cid/folio SIEMPRE se toman de la URL real.
-       ============================================================ */
-    async function guardarSeccion() {
-      const form = document.getElementById("form-cuestionario");
-      if (!form) {
-        alert("No se encontró el formulario (#form-cuestionario).");
-        return;
-      }
-
-      const preguntas = form.querySelectorAll(".pregunta[data-pregunta]");
-      if (!preguntas.length) {
-        alert("No se encontraron preguntas en esta sección.");
-        return;
-      }
-
-      // Siempre leemos cid/folio de la URL
-      const sp = new URLSearchParams(window.location.search);
-      const cidUrl = sp.get("cid");
-      const folioUrl = sp.get("folio");
-
-      if (!cidUrl && !folioUrl) {
-        alert("Falta cid o folio en la URL. Regresa al listado y entra de nuevo.");
-        return;
-      }
-
-      const fd = new FormData();
-      if (cidUrl) fd.append("cid", cidUrl);
-      if (folioUrl) fd.append("folio", folioUrl);
-
-      fd.append("seccion", `pagina_${seccionActual}`);
-
-      // Recorrer cada pregunta y anexar respuesta/comentarios/evidencias
-      preguntas.forEach((b) => {
-        const num = b.getAttribute("data-pregunta");
-
-        const r = b.querySelector(".respuesta")?.value ?? "";
-        const c = b.querySelector(".comentarios")?.value ?? "";
-
-        fd.append("pregunta[]", num);
-        fd.append("respuesta[]", r);
-        fd.append("comentarios[]", c);
-
-        const input = b.querySelector(".evidencia");
-        if (input?.files?.length) {
-          for (const file of input.files) {
-            fd.append(`evidencia_${num}[]`, file);
-          }
-        }
-      });
-
-      // Debug rápido (si algún día falla, esto te dice qué se está mandando)
-      console.log("POST -> cid:", fd.get("cid"), "folio:", fd.get("folio"), "seccion:", fd.get("seccion"));
-
-      try {
-        const resp = await fetch("../php/guardar_respuestas.php", {
-          method: "POST",
-          body: fd,
-        });
-
-        const raw = await resp.text();
-        let data;
-
-        // El backend siempre responde JSON; si no, lo imprimimos para ver qué pasó
-        try {
-          data = JSON.parse(raw);
-        } catch {
-          console.error("No es JSON:", raw);
-          alert("El servidor no devolvió JSON. Revisa consola.");
-          return;
-        }
-
-        if (!resp.ok || !data.ok) {
-          console.error("Error guardar:", data);
-          alert(data.msg || "Error al guardar.");
-          return;
-        }
-
-        alert(data.msg || "Guardado ✅");
-
-        // Refrescamos la UI para que se vea lo guardado
-        await cargarRespuestasSeccion();
-
-        // Refrescamos pendientes (porque el usuario suele guardar después de corregir algo)
-        await marcarPendientesSecciones();
-        await marcarPendientesPreguntas();
-        await actualizarTotalPendientes();
-
-      } catch (err) {
-        console.error(err);
-        alert("Error de red/servidor al guardar.");
-      }
-    }
-
-    /* ============================================================
-       9) Precargar respuestas/evidencias desde BD
-          - Esto hace que al cambiar de sección o recargar, no “se borre” nada.
-       ============================================================ */
-    async function cargarRespuestasSeccion() {
-      const seccion = `pagina_${seccionActual}`;
-
-      const url = new URL("../php/obtener_respuestas.php", window.location.href);
-
-      // Igual: cid/folio salen de la URL real
-      const sp = new URLSearchParams(window.location.search);
-      const cidUrl = sp.get("cid");
-      const folioUrl = sp.get("folio");
-
-      if (cidUrl) url.searchParams.set("cid", cidUrl);
-      if (folioUrl) url.searchParams.set("folio", folioUrl);
-      url.searchParams.set("seccion", seccion);
-
-      const resp = await fetch(url.toString(), { cache: "no-store" });
-      const data = await resp.json();
-
-      if (!resp.ok || !data.ok) {
-        console.error("Error al obtener respuestas:", data);
-        return;
-      }
-
-      // Mapa por pregunta
-      const mapa = new Map();
-      for (const r of data.respuestas) mapa.set(String(r.pregunta), r);
-
-      const form = document.getElementById("form-cuestionario");
-      const bloques = form.querySelectorAll(".pregunta[data-pregunta]");
-
-      bloques.forEach((b) => {
-        const num = b.getAttribute("data-pregunta");
-        const guardado = mapa.get(num);
-
-        // Respuesta y comentarios
-        const sel = b.querySelector(".respuesta");
-        const txt = b.querySelector(".comentarios");
-
-        if (guardado) {
-          if (sel) sel.value = guardado.respuesta ?? "";
-          if (txt) txt.value = guardado.comentarios ?? "";
-        } else {
-          if (sel) sel.value = "";
-          if (txt) txt.value = "";
-        }
-
-        // Evidencias (JSON con name/url)
-        let evidencias = [];
-        if (guardado && guardado.nom_evidencia) {
-          try { evidencias = JSON.parse(guardado.nom_evidencia) || []; } catch {}
-        }
-
-        pintarEvidencias(b, evidencias);
-      });
-    }
-
-    /* ============================================================
-       10) Pintar evidencias y permitir borrar
-            (esto es funcionalidad de preparador, por eso aquí sí hay 🗑️)
-       ============================================================ */
-    function pintarEvidencias(bloquePregunta, evidencias) {
-      const cont = bloquePregunta.querySelector(".evidencias-guardadas");
-      if (!cont) return;
-
-      if (!Array.isArray(evidencias) || evidencias.length === 0) {
-        cont.innerHTML = "<span class='text-muted'>Sin evidencias guardadas.</span>";
-        return;
-      }
-
-      const preguntaNum = bloquePregunta.getAttribute("data-pregunta");
-
-      const items = evidencias.map(ev => {
-        const name = escapeHtml(ev.name || "archivo");
-        const url = escapeHtml(ev.url || "#");
-
-        return `
-          <li class="d-flex align-items-center gap-2">
-            <a href="../${url}" target="_blank" rel="noopener">${name}</a>
-            <button type="button" class="btn btn-sm btn-outline-danger ms-auto"
-                    onclick="eliminarEvidencia('${seccionActual}','${preguntaNum}','${url.replace(/'/g,"\\'")}')">
-              🗑️
-            </button>
-          </li>
-        `;
-      }).join("");
-
-      cont.innerHTML = `<div><strong>Evidencias guardadas:</strong></div><ul class="mb-0">${items}</ul>`;
-    }
-
-    /* ============================================================
-       11) Eliminar evidencia (DB + archivo físico)
-       ============================================================ */
-    async function eliminarEvidencia(seccionNum, preguntaNum, url) {
-      if (!confirm("¿Deseas eliminar este documento?")) return;
-
-      const sp = new URLSearchParams(window.location.search);
-      const cidUrl = sp.get("cid");
-      const folioUrl = sp.get("folio");
-
-      try {
-        const fd = new FormData();
-        if (cidUrl) fd.append("cid", cidUrl);
-        if (folioUrl) fd.append("folio", folioUrl);
-
-        fd.append("seccion", `pagina_${seccionNum}`);
-        fd.append("pregunta", String(preguntaNum));
-        fd.append("url", url);
-
-        const resp = await fetch("../php/eliminar_evidencia.php", { method: "POST", body: fd });
-        const data = await resp.json();
-
-        if (!resp.ok || !data.ok) {
-          console.error("Error eliminando:", data);
-          alert(data.msg || "No se pudo eliminar.");
-          return;
-        }
-
-        alert(data.msg || "Documento eliminado ✅");
-        await cargarRespuestasSeccion();
-      } catch (e) {
-        console.error(e);
-        alert("Error de red/servidor al eliminar evidencia.");
-      }
-    }
-    window.eliminarEvidencia = eliminarEvidencia;
-
-    /* ============================================================
-       12) Botón 📝 por pregunta (abre notas solo lectura)
-            Aquí el preparador solo ve lo que puso el revisor.
-       ============================================================ */
-    function inyectarBotonesNotas() {
-      document.querySelectorAll(".pregunta[data-pregunta]").forEach(b => {
-        if (b.querySelector(".btn-nota")) return;
-
-        b.style.position = "relative";
-
-        const btn = document.createElement("button");
-        btn.type = "button";
-        btn.className = "btn btn-sm btn-outline-blue btn-nota";
-        btn.textContent = "📝";
-        btn.title = "Ver notas del revisor";
-
-
-        const preguntaNum = b.getAttribute("data-pregunta");
-        btn.addEventListener("click", () => abrirModalNotas(preguntaNum));
-
-        b.appendChild(btn);
-      });
-
-      // Ocultar todos los .dropApoyo dentro de #contenedor-cuestionario
-        /* const drops = document.querySelectorAll('#contenedor-cuestionario .parrafoComentarios');
-        drops.forEach(el => {
-          el.style.display = 'none';
-        }); */
-    }
-
-    /* ============================================================
-       13) Ocultar el parrafo insertardo en los comentarios
-       ============================================================ */
-       function ocultarParrafoComentarios() {
-        const drops = document.querySelectorAll('#contenedor-cuestionario .parrafoComentarios');
-        drops.forEach(el => {
-          el.style.display = 'none';
-        });
-       }
-
-    /* ============================================================
-       14) Modal notas (solo lectura)
-       ============================================================ */
-    async function abrirModalNotas(preguntaNum) {
-      const sp = new URLSearchParams(window.location.search);
-      const cidUrl = sp.get("cid");
-      const folioUrl = sp.get("folio");
-
-      if (!cidUrl && !folioUrl) {
-        alert("Falta cid/folio en la URL.");
-        return;
-      }
-
-      notaContext = {
-        pregunta: String(preguntaNum),
-        seccion: `pagina_${seccionActual}`,
-        cid: cidUrl,
-        folio: folioUrl
-      };
-
-      document.getElementById("modalNotasMeta").textContent =
-        `Cuestionario: ${notaContext.folio || ("CID " + notaContext.cid)} · Sección: ${notaContext.seccion} · Pregunta: ${notaContext.pregunta}`;
-
-      document.getElementById("historialNotas").innerHTML = "<div class='text-muted'>Cargando...</div>";
-
-      if (!modalNotas) modalNotas = new bootstrap.Modal(document.getElementById("modalNotas"));
-      modalNotas.show();
-
-      await cargarHistorialNotasSoloLectura();
-    }
-
-    async function cargarHistorialNotasSoloLectura() {
-      const url = new URL("../php/obtener_notas.php", window.location.href);
-      url.searchParams.set("cid", notaContext.cid);
-      url.searchParams.set("seccion", notaContext.seccion);
-      url.searchParams.set("pregunta", notaContext.pregunta);
-
-      const resp = await fetch(url.toString(), { cache: "no-store" });
-      const data = await resp.json();
-
-      const cont = document.getElementById("historialNotas");
-
-      if (!resp.ok || !data.ok) {
-        console.error(data);
-        cont.innerHTML = "<div class='text-danger'>No se pudieron cargar las notas.</div>";
-        return;
-      }
-
-      if (!data.notas.length) {
-        cont.innerHTML = "<div class='text-muted'>Sin notas aún.</div>";
-        return;
-      }
-
-      cont.innerHTML = data.notas.map(n => {
-        const badge = Number(n.resuelta) === 1
-          ? "<span class='badge bg-success'>Resuelta</span>"
-          : "<span class='badge bg-warning text-dark'>Pendiente</span>";
-
-        const resueltaMeta = Number(n.resuelta) === 1
-          ? `<div class="text-muted small mt-1">Resuelta por <strong>${escapeHtml(n.resuelta_por || "-")}</strong> · ${escapeHtml(n.resuelta_en || "-")}</div>`
-          : "";
-
-        return `
-          <div class="border rounded-3 p-3 bg-white">
-            <div class="d-flex align-items-start justify-content-between gap-2">
-              <div>
-                <div class="small text-muted">
-                  <strong>${escapeHtml(n.revisor_nombre || "")}</strong> · ${escapeHtml(n.creado_en || "")}
-                </div>
-                <div class="mt-1">${escapeHtml(n.nota || "")}</div>
-                ${resueltaMeta}
-              </div>
-              <div class="d-flex flex-column gap-2 align-items-end">
-                ${badge}
-              </div>
-            </div>
-          </div>
-        `;
-      }).join("");
-    }
-
-    /* ============================================================
-       15) Pendientes por sección (badges en tabs)
-       ============================================================ */
-    async function marcarPendientesSecciones() {
-      const sp = new URLSearchParams(window.location.search);
-      const cidUrl = sp.get("cid");
-      if (!cidUrl) return;
-
-      const url = new URL("../php/pendientes_notas.php", window.location.href);
-      url.searchParams.set("cid", cidUrl);
-
-      const resp = await fetch(url.toString(), { cache: "no-store" });
-      const data = await resp.json();
-      if (!resp.ok || !data.ok) return;
-
-      const mapa = data.pendientes_por_seccion || {};
-      document.querySelectorAll(".nav-link .badge").forEach(b => b.remove());
-
-      for (let i = 1; i <= 8; i++) {
-        const key = `pagina_${i}`;
-        const pendientes = Number(mapa[key] || 0);
-        if (pendientes > 0) {
-          const tab = document.querySelectorAll(".nav-link")[i - 1];
-          if (!tab) continue;
-
-          const badge = document.createElement("span");
-          badge.className = "badge bg-danger ms-2";
-          badge.textContent = pendientes;
-          tab.appendChild(badge);
-        }
-      }
-    }
-
-    /* ============================================================
-       16) Pendientes por pregunta (badge en botón 📝)
-       ============================================================ */
-    async function marcarPendientesPreguntas() {
-      const sp = new URLSearchParams(window.location.search);
-      const cidUrl = sp.get("cid");
-      if (!cidUrl) return;
-
-      const seccion = `pagina_${seccionActual}`;
-      const url = new URL("../php/pendientes_notas.php", window.location.href);
-      url.searchParams.set("cid", cidUrl);
-      url.searchParams.set("seccion", seccion);
-
-      const resp = await fetch(url.toString(), { cache: "no-store" });
-      const data = await resp.json();
-      if (!resp.ok || !data.ok) return;
-
-      const mapa = data.pendientes_por_pregunta || {};
-
-      document.querySelectorAll(".pregunta[data-pregunta]").forEach(b => {
-        const pNum = b.getAttribute("data-pregunta");
-        const btn = b.querySelector(".btn-nota");
-        if (!btn) return;
-
-        const pendientes = Number(mapa[pNum] || 0);
-
-        btn.classList.remove("btn-outline-danger");
-        btn.classList.add("btn-outline-blue");
-        btn.removeAttribute("data-badge");
-
-        if (pendientes > 0) {
-          btn.classList.remove("btn-outline-blue");
-          btn.classList.add("btn-outline-danger");
-          btn.setAttribute("data-badge", String(pendientes));
-        }
-      });
-    }
-
-    /* ============================================================
-       17) Total general (badge sobre el nombre del usuario)
-       ============================================================ */
-    async function actualizarTotalPendientes() {
-      const sp = new URLSearchParams(window.location.search);
-      const cidUrl = sp.get("cid");
-      if (!cidUrl) return;
-
-      const url = new URL("../php/pendientes_notas.php", window.location.href);
-      url.searchParams.set("cid", cidUrl);
-
-      const resp = await fetch(url.toString(), { cache: "no-store" });
-      const data = await resp.json();
-
-      const badge = document.getElementById("badgeTotalPendientes");
-      if (!badge) return;
-
-      if (!resp.ok || !data.ok) {
-        badge.style.display = "none";
-        return;
-      }
-
-      const total = Number(data.total_pendientes || 0);
-
-      if (total > 0) {
-        badge.textContent = total;
-        badge.style.display = "inline-block";
-      } else {
-        badge.style.display = "none";
-      }
-    }
-
-    /* ============================================================
-       18) Modal Pendientes: listado total + “Ir”
-       ============================================================ */
-    async function abrirPendientes() {
-      const sp = new URLSearchParams(window.location.search);
-      const cidUrl = sp.get("cid");
-      if (!cidUrl) return;
-
-      if (!modalPendientes) modalPendientes = new bootstrap.Modal(document.getElementById("modalPendientes"));
-      document.getElementById("listaPendientes").innerHTML = "<div class='text-muted'>Cargando...</div>";
-      modalPendientes.show();
-
-      await cargarListaPendientes(cidUrl);
-    }
-
-    async function cargarListaPendientes(cidUrl) {
-      const url = new URL("../php/listar_pendientes.php", window.location.href);
-      url.searchParams.set("cid", cidUrl);
-
-      const resp = await fetch(url.toString(), { cache: "no-store" });
-      const data = await resp.json();
-
-      const cont = document.getElementById("listaPendientes");
-
-      if (!resp.ok || !data.ok) {
-        cont.innerHTML = "<div class='text-danger'>No se pudieron cargar los pendientes.</div>";
-        return;
-      }
-
-      if (!data.pendientes.length) {
-        cont.innerHTML = "<div class='text-muted'>No hay notas pendientes 🎉</div>";
-        return;
-      }
-
-      cont.innerHTML = data.pendientes.map(item => {
-        const sec = escapeHtml(item.seccion);
-        const preg = escapeHtml(item.pregunta);
-        const n = Number(item.pendientes || 0);
-        const ultima = escapeHtml(item.ultima_nota || "-");
-
-        return `
-          <div class="border rounded-3 p-3 bg-white">
-            <div class="d-flex justify-content-between align-items-start gap-2">
-              <div>
-                <div class="fw-semibold">Sección: <span class="mono">${sec}</span> · Pregunta: <strong>${preg}</strong></div>
-                <div class="text-muted small">Pendientes: <strong>${n}</strong> · Última nota: ${ultima}</div>
-              </div>
-              <button class="btn btn-sm btn-danger" type="button"
-                      onclick="irAPregunta('${sec.replace(/'/g,"\\'")}', '${preg.replace(/'/g,"\\'")}')">
-                Ir
-              </button>
-            </div>
-          </div>
-        `;
-      }).join("");
-    }
-
-    async function irAPregunta(seccionStr, preguntaNum) {
-      const numSeccion = parseInt(String(seccionStr).replace("pagina_", ""), 10);
-      if (!numSeccion || numSeccion < 1 || numSeccion > 8) return;
-
-      if (modalPendientes) modalPendientes.hide();
-
-      await new Promise(resolve => {
-        cargarCuestionario(numSeccion);
-        setTimeout(resolve, 250);
-      });
-
-      const el = document.querySelector(`.pregunta[data-pregunta="${preguntaNum}"]`);
-      if (el) {
-        el.scrollIntoView({ behavior: "smooth", block: "start" });
-        el.classList.add("highlight-pregunta");
-        setTimeout(() => el.classList.remove("highlight-pregunta"), 1800);
-      }
-
-      setTimeout(() => abrirModalNotas(preguntaNum), 400);
-    }
-    window.irAPregunta = irAPregunta;
-
-    /* ============================================================
-       19) INIT
-       ============================================================ */
-    document.addEventListener("DOMContentLoaded", async () => {
-      // Tooltips de Bootstrap
-      document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => new bootstrap.Tooltip(el));
-
-      // Usuario sesión
-      await cargarUsuarioSesion();
-
-      // Sección 1 por defecto
-      cargarCuestionario(1);
-
-      // También intentamos pintar pendientes al iniciar
-      await marcarPendientesSecciones();
-      await marcarPendientesPreguntas();
-      await actualizarTotalPendientes();
-    });
-  </script>
 </body>
 </html>

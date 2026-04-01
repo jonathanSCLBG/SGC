@@ -121,10 +121,8 @@
               class="card-title mb-3"
               style="margin:0; padding:20px; color:#f6f7fb"
             >
-              Cuestionarios para revisar
+              Cuestionarios terminados
             </h5>
-
-            
           </div>
 
           <div class="table-responsive" style="margin:10px 10px">
@@ -147,7 +145,6 @@
                   <td colspan="8" class="text-center text-muted">Cargando...</td>
                 </tr>
               </tbody>
-
             </table>
           </div>
         </div>
@@ -176,43 +173,56 @@
           .replaceAll("'", "&#039;");
       }
 
-      // =========================
-      // Tabla cuestionarios
-      // =========================
       async function cargarTablaCuestionarios() {
         const tbody = document.getElementById("tbodyCuestionarios");
-        tbody.innerHTML = `<tr><td colspan="8" class="text-center text-muted">Cargando...</td></tr>`;
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="8" class="text-center text-muted">Cargando...</td>
+          </tr>
+        `;
 
         try {
-          const resp = await fetch("php/listar_cuestionarios.php", { cache: "no-store" });
+          // ✅ CAMBIO IMPORTANTE:
+          // este archivo debe regresar SOLO los cuestionarios ya validados por el validador
+          const resp = await fetch("php/listar_cuestionarios_invitado.php", {
+            cache: "no-store"
+          });
+
           const data = await resp.json();
 
           if (!resp.ok || !data.ok) {
-            tbody.innerHTML = `<tr><td colspan="8" class="text-center text-danger">Error al cargar</td></tr>`;
+            console.error("listar_cuestionarios_invitado:", data);
+            tbody.innerHTML = `
+              <tr>
+                <td colspan="8" class="text-center text-danger">Error al cargar</td>
+              </tr>
+            `;
             return;
           }
 
-          if (!data.cuestionarios.length) {
-            tbody.innerHTML = `<tr><td colspan="8" class="text-center text-muted">No hay cuestionarios</td></tr>`;
+          const lista = Array.isArray(data.cuestionarios) ? data.cuestionarios : [];
+
+          if (!lista.length) {
+            tbody.innerHTML = `
+              <tr>
+                <td colspan="8" class="text-center text-muted">
+                  No hay cuestionarios terminados.
+                </td>
+              </tr>
+            `;
             return;
           }
 
-          tbody.innerHTML = data.cuestionarios.map(q => {
-            const est = String(q.estatus || "").toLowerCase();
-            const badge =
-              est === "abierto" ? "bg-success" :
-              est === "cerrado" ? "bg-secondary" :
-              "bg-warning text-dark";
-
+          tbody.innerHTML = lista.map(q => {
             const link = `app/sgc_invitado.html?cid=${q.id}&folio=${encodeURIComponent(q.folio)}`;
 
             return `
               <tr>
                 <td>${q.id}</td>
                 <td class="mono"><strong>${escapeHtml(q.folio)}</strong></td>
-                <td>${escapeHtml(q.fecha_creacion)}</td>
-                <td>${escapeHtml(q.fecha_vencimiento)}</td>
-                <td><span class="badge ${badge}">${escapeHtml(q.estatus)}</span></td>
+                <td>${escapeHtml(q.fecha_creacion || "-")}</td>
+                <td>${escapeHtml(q.fecha_vencimiento || "-")}</td>
+                <td><span class="badge bg-success">Validado</span></td>
                 <td>${escapeHtml(q.creado_por || "-")}</td>
                 <td>
                   <div class="small">
@@ -221,7 +231,7 @@
                   </div>
                 </td>
                 <td>
-                  <a href="${link}" class="btn btn-dark btn-sm">Revisar</a>
+                  <a href="${link}" class="btn btn-dark btn-sm">Ver</a>
                 </td>
               </tr>
             `;
@@ -229,7 +239,11 @@
 
         } catch (e) {
           console.error(e);
-          tbody.innerHTML = `<tr><td colspan="8" class="text-center text-danger">Error de servidor</td></tr>`;
+          tbody.innerHTML = `
+            <tr>
+              <td colspan="8" class="text-center text-danger">Error de servidor</td>
+            </tr>
+          `;
         }
       }
 

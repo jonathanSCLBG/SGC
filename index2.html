@@ -58,6 +58,19 @@
         color: #1f2937;
         padding: 18px 8px;
       }
+
+      .acciones-wrap {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+      }
+
+      .btn-icono {
+        min-width: 40px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+      }
     </style>
   </head>
 
@@ -115,6 +128,7 @@
               justify-content:space-between;
               align-items:center;
               background-color:#28334f;
+              padding-right:20px;
             "
           >
             <h5
@@ -124,7 +138,9 @@
               Cuestionarios para revisar
             </h5>
 
-            
+            <a href="papelera_revisor.html" class="btn btn-outline-light btn-sm">
+              🗑️ Cuestionarios eliminados
+            </a>
           </div>
 
           <div class="table-responsive" style="margin:10px 10px">
@@ -138,7 +154,7 @@
                   <th>Estatus</th>
                   <th>Creador</th>
                   <th>Última modificación</th>
-                  <th style="width: 160px">Acción</th>
+                  <th style="width: 190px">Acción</th>
                 </tr>
               </thead>
 
@@ -147,7 +163,6 @@
                   <td colspan="8" class="text-center text-muted">Cargando...</td>
                 </tr>
               </tbody>
-
             </table>
           </div>
         </div>
@@ -176,6 +191,12 @@
           .replaceAll("'", "&#039;");
       }
 
+      function escaparParaOnclick(str) {
+        return String(str ?? "")
+          .replaceAll("\\", "\\\\")
+          .replaceAll("'", "\\'");
+      }
+
       // =========================
       // Usuario en sesión (y validar rol revisor)
       // =========================
@@ -189,9 +210,7 @@
             return;
           }
 
-          // Validar rol revisor
           if (String(data.tipo_usuario || "").toLowerCase() !== "revisor") {
-            // Redirige según rol (ajusta si tu app usa otras rutas)
             if (String(data.tipo_usuario || "").toLowerCase() === "preparador") {
               window.location.href = "index3.html";
             } else {
@@ -205,6 +224,44 @@
         } catch (e) {
           console.error(e);
           document.getElementById("lblUsuario").textContent = "Usuario ▼";
+        }
+      }
+
+      // =========================
+      // Enviar cuestionario a papelera
+      // =========================
+      async function eliminarCuestionario(id, folio) {
+        const confirmado = confirm(
+          `¿Seguro que deseas enviar este cuestionario a papelera?\n\nID: ${id}\nFolio: ${folio}\n\nPodrás restaurarlo después desde la papelera.`
+        );
+
+        if (!confirmado) return;
+
+        try {
+          const resp = await fetch("php/eliminar_cuestionario.php", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+              id: id,
+              folio: folio
+            })
+          });
+
+          const data = await resp.json();
+
+          if (!resp.ok || !data.ok) {
+            alert(data.msg || "No se pudo enviar el cuestionario a papelera.");
+            return;
+          }
+
+          alert(data.msg || "Cuestionario enviado a papelera correctamente.");
+          await cargarTablaCuestionarios();
+
+        } catch (e) {
+          console.error(e);
+          alert("Error de servidor al enviar el cuestionario a papelera.");
         }
       }
 
@@ -253,7 +310,17 @@
                   </div>
                 </td>
                 <td>
-                  <a href="${link}" class="btn btn-dark btn-sm">Revisar</a>
+                  <div class="acciones-wrap">
+                    <a href="${link}" class="btn btn-dark btn-sm">Revisar</a>
+                    <button
+                      type="button"
+                      class="btn btn-danger btn-sm btn-icono"
+                      title="Enviar cuestionario a papelera"
+                      onclick="eliminarCuestionario(${Number(q.id)}, '${escaparParaOnclick(q.folio)}')"
+                    >
+                      🗑️
+                    </button>
+                  </div>
                 </td>
               </tr>
             `;

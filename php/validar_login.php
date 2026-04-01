@@ -11,8 +11,8 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     exit;
 }
 
-$usuario  = $_POST['usuario'] ?? '';
-$password = $_POST['password'] ?? '';
+$usuario  = trim($_POST['usuario'] ?? '');
+$password = trim($_POST['password'] ?? '');
 
 if ($usuario === '' || $password === '') {
     header("Location: ../login.html");
@@ -49,13 +49,12 @@ try {
         exit;
     }
 
-   $_SESSION['id']           = $datos['id'];
-   $_SESSION['user_id']      = $datos['id'];
-   $_SESSION['nombre']       = $datos['Nombre'];
-   $_SESSION['user_nombre']  = $datos['Nombre'];
-   $_SESSION['usuario']      = $datos['Usuario'];
-   $_SESSION['tipo_usuario'] = $datos['tipo_usuario'];
-
+    $_SESSION['id']           = $datos['id'];
+    $_SESSION['user_id']      = $datos['id'];
+    $_SESSION['nombre']       = $datos['Nombre'];
+    $_SESSION['user_nombre']  = $datos['Nombre'];
+    $_SESSION['usuario']      = $datos['Usuario'];
+    $_SESSION['tipo_usuario'] = $datos['tipo_usuario'];
 
     if ($datos['tipo_usuario'] === 'preparador') {
         header("Location: ../index.html");
@@ -67,7 +66,12 @@ try {
         exit;
     }
 
-    throw new Exception("Tipo de usuario no válido.");
+    if ($datos['tipo_usuario'] === 'validador') {
+        header("Location: ../validador.php");
+        exit;
+    }
+
+    throw new Exception("Tipo de usuario no válido: " . $datos['tipo_usuario']);
 
 } catch (Throwable $e) {
     die("Error en validar_login.php: " . $e->getMessage());

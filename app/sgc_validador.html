@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <title>SGC - Revisión de cuestionario</title>
+
+  <link rel="stylesheet" href="style.css" />
+  <link rel="icon" href="imagenes/logo mas chico _page-0003.png" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet" />
+
+  <style>
+    /* ==========
+       IMPORTANTE: el “azul” no existe en Bootstrap como btn-outline-blue
+       así que lo definimos aquí para que SIEMPRE se vea.
+       ========== */
+    .btn-outline-blue{
+      color:#28334f;
+      border:1px solid #28334f;
+      background:transparent;
+    }
+    .btn-outline-blue:hover{
+      background-color:#28334f;
+      border-color:#28334f;
+      color:#fff;
+    }
+
+    /* Botoncito 📝 por pregunta */
+    .btn-nota{
+      position:absolute;
+      top:10px;
+      right:10px;
+      z-index:5;
+      line-height:1;
+      border:none;
+    }
+
+    /* Badge ROJO: pendientes */
+    .btn-nota[data-badge]::after{
+      content:attr(data-badge);
+      position:absolute;
+      top:-8px;
+      right:-8px;
+      background:#dc3545;
+      color:#fff;
+      border-radius:999px;
+      font-size:11px;
+      padding:1px 6px;
+      line-height:1.4;
+    }
+
+    /* Badge VERDE: validada */
+    .btn-nota[data-badge-ok]::before{
+      content:attr(data-badge-ok);
+      position:absolute;
+      top:-8px;
+      right:-8px;
+      background:#198754;
+      color:#fff;
+      border-radius:999px;
+      font-size:11px;
+      padding:1px 6px;
+      line-height:1.4;
+    }
+
+    /* Botón pendientes */
+    .btn-pendientes{
+      border:1px solid rgba(255,255,255,.35);
+      color:#fff;
+      background:transparent;
+      border-radius:10px;
+      padding:6px 10px;
+      font-size:13px;
+      white-space:nowrap;
+      position:relative;
+    }
+    .btn-pendientes:hover{ background:rgba(255,255,255,.10); }
+
+    /* Resaltar pregunta cuando das Ir */
+    .highlight-pregunta{
+      outline:3px solid rgba(220,53,69,.35);
+      border-radius:12px;
+      transition:outline-color .6s ease;
+    }
+
+    /* Estilos lectura */
+    .input-group{
+      border-bottom:2px solid #323c55 !important;
+      padding-bottom:10px !important;
+      position:relative !important;
+    }
+    .input-group-text{
+      font-weight:bold !important;
+      border:none !important;
+      background:transparent !important;
+    }
+    .respuesta-p{
+      position:absolute !important;
+      left:110px;
+    }
+    .form-floating{
+      border-bottom:2px solid #323c55;
+      padding-bottom:10px !important;
+      background:transparent !important;
+    }
+    .parrafoComentarios{
+      font-weight:bold;
+      margin-left:12px;
+      margin-bottom:0;
+      padding-bottom:0;
+    }
+    .comentarios-p{
+      margin:5px 0 0 12px;
+      padding:0 !important;
+    }
+    .evidencias-guardadas{ margin-left:12px; }
+    .evidencias-guardadas a{
+      text-decoration:none;
+      font-weight:500;
+      color:#28334f;
+      padding:4px 8px;
+      border-radius:12px;
+      transition:all 500ms ease-out;
+    }
+    .evidencias-guardadas a:hover{
+      background-color:#28334f;
+      color:#fff;
+    }
+
+    /* Bloqueo visual cuando ya está validada */
+    .nota-bloqueada{
+      opacity:.65;
+      pointer-events:none;
+    }
+  </style>
+</head>
+
+<body>
+  <!-- NAVBAR -->
+  <nav class="navbar navbar-expand-lg nav-tabs"
+       style="background-color:#28334f; justify-content:center; padding:9px 0; max-height:77px;">
+    <div class="container-fluid" style="width:100%; max-width:1100px; margin:0;">
+      <a class="bg-white rounded px-2 py-1" href="#" style="margin:8px 0; margin-left:7px">
+        <img src="https://sclconsultores.com.mx/imagenesRegistros/logo.svg" alt="logo" height="34" />
+      </a>
+
+      <ul class="nav ms-4" style="width:70%">
+        <li class="nav-item" data-bs-toggle="tooltip" data-bs-placement="bottom"
+            data-bs-title="I.Información de la firma y proceso de valoración de riesgos">
+          <a class="nav-link active" href="#" onclick="cargarCuestionario(1); return false;">I</a>
+        </li>
+        <li class="nav-item" data-bs-toggle="tooltip" data-bs-placement="bottom"
+            data-bs-title="II. Gobierno corporativo y liderazgo">
+          <a class="nav-link" href="#" onclick="cargarCuestionario(2); return false;">II</a>
+        </li>
+        <li class="nav-item" data-bs-toggle="tooltip" data-bs-placement="bottom"
+            data-bs-title="III. Requerimientos de ética aplicables">
+          <a class="nav-link" href="#" onclick="cargarCuestionario(3); return false;">III</a>
+        </li>
+        <li class="nav-item" data-bs-toggle="tooltip" data-bs-placement="bottom"
+            data-bs-title="IV. Aceptación y continuidad...">
+          <a class="nav-link" href="#" onclick="cargarCuestionario(4); return false;">IV</a>
+        </li>
+        <li class="nav-item" data-bs-toggle="tooltip" data-bs-placement="bottom"
+            data-bs-title="V. Realización del encargo">
+          <a class="nav-link" href="#" onclick="cargarCuestionario(5); return false;">V</a>
+        </li>
+        <li class="nav-item" data-bs-toggle="tooltip" data-bs-placement="bottom"
+            data-bs-title="VI. Recursos">
+          <a class="nav-link" href="#" onclick="cargarCuestionario(6); return false;">VI</a>
+        </li>
+        <li class="nav-item" data-bs-toggle="tooltip" data-bs-placement="bottom"
+            data-bs-title="VII. Información y comunicación">
+          <a class="nav-link" href="#" onclick="cargarCuestionario(7); return false;">VII</a>
+        </li>
+        <li class="nav-item" data-bs-toggle="tooltip" data-bs-placement="bottom"
+            data-bs-title="VIII. Proceso de seguimiento...">
+          <a class="nav-link" href="#" onclick="cargarCuestionario(8); return false;">VIII</a>
+        </li>
+      </ul>
+
+      <button class="btn-pendientes me-2" type="button" onclick="abrirPendientes()">
+        🚨 Pendientes
+        <span id="badgeTotalPendientes"
+              class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger"
+              style="display:none;">0</span>
+      </button>
+
+      <div class="cont-drop">
+        <p class="usuario" id="lblUsuario">Cargando... ▼</p>
+        <div class="dropdown">
+          <a href="../index2.html" class="accion">Volver al listado</a>
+          <a href="../php/logout.php" class="accion">Cerrar sesión</a>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <!-- CONTENIDO -->
+  <div class="seccion">
+    <form id="form-cuestionario">
+      <div id="contenedor-cuestionario" class="seccion" style="text-align:center;"></div>
+    </form>
+  </div>
+
+  <!-- MODAL NOTAS -->
+  <div class="modal fade" id="modalNotas" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+      <div class="modal-content">
+
+        <div class="modal-header">
+          <div>
+            <h5 class="modal-title mb-0">Notas del revisor</h5>
+            <div class="text-muted small" id="modalNotasMeta">...</div>
+          </div>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+        </div>
+
+        <div class="modal-body">
+          <ul class="nav nav-tabs" id="tabsNotas" role="tablist">
+            <li class="nav-item" role="presentation">
+              <button class="nav-link active" id="tab-historial"
+                      data-bs-toggle="tab" data-bs-target="#pane-historial"
+                      type="button" role="tab">
+                Historial
+              </button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button class="nav-link" id="tab-nueva"
+                      data-bs-toggle="tab" data-bs-target="#pane-nueva"
+                      type="button" role="tab">
+                Nueva nota
+              </button>
+            </li>
+          </ul>
+
+          <div class="tab-content pt-3">
+            <div class="tab-pane fade show active" id="pane-historial" role="tabpanel">
+              <div id="historialNotas" class="vstack gap-2">
+                <div class="text-muted">Cargando...</div>
+              </div>
+            </div>
+
+            <div class="tab-pane fade" id="pane-nueva" role="tabpanel">
+              <label class="form-label fw-semibold">Escribe tu nota</label>
+              <textarea id="txtNuevaNota" class="form-control" rows="4" placeholder="Escribe la nota..."></textarea>
+
+              <div class="d-flex justify-content-end gap-2 mt-3">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-dark" id="btnGuardarNota">Guardar nota</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- FOOTER: validar pregunta -->
+        <div class="modal-footer">
+          <button type="button" class="btn btn-sm btn-outline-success" id="btnValidarRespuesta">
+            Validar Respuesta
+          </button>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL PENDIENTES -->
+  <div class="modal fade" id="modalPendientes" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+      <div class="modal-content">
+
+        <div class="modal-header">
+          <div>
+            <h5 class="modal-title mb-0">Pendientes por validar</h5>
+            <div class="text-muted small">
+              Aquí aparecen solo notas con estado <strong>Pendiente</strong>.
+            </div>
+          </div>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+        </div>
+
+        <div class="modal-body">
+          <div id="listaPendientes" class="vstack gap-2">
+            <div class="text-muted">Cargando...</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- Bootstrap JS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>
+
+  <!-- Shared -->
+  <script defer src="js/shared/utils.js"></script>
+
+  <!-- Revisor -->
+  <script defer src="js/validador/state.js"></script>
+  <script defer src="js/validador/session.js"></script>
+  <script defer src="js/validador/cuestionario.js"></script>
+  <script defer src="js/validador/notas.js"></script>
+  <script defer src="js/validador/pendientes.js"></script>
+  <script defer src="js/validador/main.js"></script>
+
+</body>
+</html>

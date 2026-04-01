@@ -1,531 +1,81 @@
 <!doctype html>
 <html lang="es">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SGC - Invitado</title>
 
-    <!--
-    Pantalla de INVITADO (solo lectura).
-    Aquí NO se editan respuestas ni evidencias.
-    Lo único “editable” son las NOTAS del revisor (por pregunta) y el estado Resuelta/Pendiente.
+  <link rel="stylesheet" href="style.css" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet" />
+</head>
 
-    Flujo general:
-    - Cargamos una sección (pagina_1.html, pagina_2.html, etc.)
-    - Precargamos respuestas/evidencias desde la BD
-    - Deshabilitamos inputs (modo lectura)
-    - Tranformamos los inputs a parrafos (para eliminar elementos de los inputs)
-  -->
-    <title>SGC - Revisión de cuestionario</title>
+<body>
 
-    <link rel="stylesheet" href="style.css" />
-    <link rel="icon" href="imagenes/logo mas chico _page-0003.png" />
+<nav class="navbar navbar-expand-lg nav-tabs"
+     style="background-color:#28334f; justify-content:center; padding:9px 0; max-height:77px;">
 
-    <!-- Bootstrap para estilos, tabs, tooltips y modales -->
-    <link
-      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css"
-      rel="stylesheet"
-    />
+  <div class="container-fluid" style="width:100%; max-width:1100px; margin:0;">
 
-    <style>
-      /* Propiedades de las respuestas */
-      .input-group{
-        border-bottom: 2px solid #323c55 !important;
-        padding-bottom: 10px !important;
-        position: relative !important;
-      }
-      .input-group-text {
-        font-weight: bold !important;
-        border: none !important;
-        background: transparent !important;
-      }
-      .respuesta-p{
-        position: absolute !important;
-        left: 110px;
-      }
+    <!-- Logo -->
+    <a class="bg-white rounded px-2 py-1" href="#" style="margin:8px 0; margin-left:7px">
+      <img src="https://sclconsultores.com.mx/imagenesRegistros/logo.svg"
+           alt="logo"
+           height="34" />
+    </a>
 
-      /* Propiedades de los comentarios */
-      .form-floating {
-        border-bottom: 2px solid #323c55;
-        padding-bottom: 10px !important;
-        background: transparent !important;
-      }
-      .parrafoComentarios{
-        font-weight: bold;
-        margin-left: 12px;
-        margin-bottom: 0;
-        padding-bottom: 0;
-      }
-      .comentarios-p{
-        margin: 5px 0 0 12px;
-        padding: 0 !important;
-      }
+    <!-- Tabs -->
+    <ul class="nav ms-4" style="width:70%">
+      <li class="nav-item">
+        <a class="nav-link active" href="#" onclick="INV.cargarCuestionario(1);return false;">I</a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link" href="#" onclick="INV.cargarCuestionario(2);return false;">II</a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link" href="#" onclick="INV.cargarCuestionario(3);return false;">III</a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link" href="#" onclick="INV.cargarCuestionario(4);return false;">IV</a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link" href="#" onclick="INV.cargarCuestionario(5);return false;">V</a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link" href="#" onclick="INV.cargarCuestionario(6);return false;">VI</a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link" href="#" onclick="INV.cargarCuestionario(7);return false;">VII</a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link" href="#" onclick="INV.cargarCuestionario(8);return false;">VIII</a>
+      </li>
+    </ul>
 
-      /* Campo de evidencias */
-      .evidencias-guardadas{
-        margin-left: 12px;
-      }
-      .evidencias-guardadas a{
-        text-decoration: none;
-        font-weight: 500;
-        color: #28334f;
-        padding: 4px 8px;
-        border-radius: 12px;
-        transition: all 500ms ease-out;
-      }
-      .evidencias-guardadas a:hover{
-        background-color: #28334f;
-        color: #fff;
-      }
-    </style>
-  </head>
-
-  <body>
-    <!-- ============================================================
-       NAVBAR: tabs + usuario-invitado
-       ============================================================ -->
-    <nav
-      class="navbar navbar-expand-lg nav-tabs"
-      style="
-        background-color: #28334f;
-        justify-content: center;
-        padding: 9px 0;
-        max-height: 77px;
-      "
-    >
-      <div
-        class="container-fluid"
-        style="width: 100%; max-width: 1100px; margin: 0"
-      >
-        <!-- Logo -->
-        <a
-          class="bg-white rounded px-2 py-1"
-          href="#"
-          style="margin: 8px 0; margin-left: 7px"
-        >
-          <img
-            src="https://sclconsultores.com.mx/imagenesRegistros/logo.svg"
-            alt="logo"
-            height="34"
-          />
-        </a>
-
-        <!-- Tabs: cada tab carga pagina_X.html -->
-        <ul class="nav ms-4" style="width: 70%">
-          <li
-            class="nav-item"
-            data-bs-toggle="tooltip"
-            data-bs-placement="bottom"
-            data-bs-title="I.Información de la firma y proceso de valoración de riesgos"
-          >
-            <a
-              class="nav-link active"
-              href="#"
-              onclick="
-                cargarCuestionario(1);
-                return false;
-              "
-              >I</a
-            >
-          </li>
-          <li
-            class="nav-item"
-            data-bs-toggle="tooltip"
-            data-bs-placement="bottom"
-            data-bs-title="II. Gobierno corporativo y liderazgo"
-          >
-            <a
-              class="nav-link"
-              href="#"
-              onclick="
-                cargarCuestionario(2);
-                return false;
-              "
-              >II</a
-            >
-          </li>
-          <li
-            class="nav-item"
-            data-bs-toggle="tooltip"
-            data-bs-placement="bottom"
-            data-bs-title="III. Requerimientos de ética aplicables"
-          >
-            <a
-              class="nav-link"
-              href="#"
-              onclick="
-                cargarCuestionario(3);
-                return false;
-              "
-              >III</a
-            >
-          </li>
-          <li
-            class="nav-item"
-            data-bs-toggle="tooltip"
-            data-bs-placement="bottom"
-            data-bs-title="IV. Aceptación y continuidad..."
-          >
-            <a
-              class="nav-link"
-              href="#"
-              onclick="
-                cargarCuestionario(4);
-                return false;
-              "
-              >IV</a
-            >
-          </li>
-          <li
-            class="nav-item"
-            data-bs-toggle="tooltip"
-            data-bs-placement="bottom"
-            data-bs-title="V. Realización del encargo"
-          >
-            <a
-              class="nav-link"
-              href="#"
-              onclick="
-                cargarCuestionario(5);
-                return false;
-              "
-              >V</a
-            >
-          </li>
-          <li
-            class="nav-item"
-            data-bs-toggle="tooltip"
-            data-bs-placement="bottom"
-            data-bs-title="VI. Recursos"
-          >
-            <a
-              class="nav-link"
-              href="#"
-              onclick="
-                cargarCuestionario(6);
-                return false;
-              "
-              >VI</a
-            >
-          </li>
-          <li
-            class="nav-item"
-            data-bs-toggle="tooltip"
-            data-bs-placement="bottom"
-            data-bs-title="VII. Información y comunicación"
-          >
-            <a
-              class="nav-link"
-              href="#"
-              onclick="
-                cargarCuestionario(7);
-                return false;
-              "
-              >VII</a
-            >
-          </li>
-          <li
-            class="nav-item"
-            data-bs-toggle="tooltip"
-            data-bs-placement="bottom"
-            data-bs-title="VIII. Proceso de seguimiento..."
-          >
-            <a
-              class="nav-link"
-              href="#"
-              onclick="
-                cargarCuestionario(8);
-                return false;
-              "
-              >VIII</a
-            >
-          </li>
-        </ul>
-
-        <!-- Usuario invitado -->
-        <div class="cont-drop">
-          <p class="usuario" id="lblUsuario">Usuario Invitado ▼</p>
-          <div class="dropdown">
-            <a href="../index3.html" class="accion">Volver al listado</a>
-            <a href="../php/logout.php" class="accion">Cerrar sesión</a>
-          </div>
-        </div>
+    <!-- Dropdown -->
+    <div class="cont-drop">
+      <p class="usuario" id="lblUsuario">Usuario Invitado ▼</p>
+      <div class="dropdown">
+        <a href="../index3.html" class="accion">Volver al listado</a>
+        <a href="../php/logout.php" class="accion">Cerrar sesión</a>
       </div>
-    </nav>
-
-    <!-- ============================================================
-       CONTENEDOR: aquí se inyectan las pagina_X.html
-       ============================================================ -->
-    <div class="seccion">
-      <form id="form-cuestionario">
-        <div
-          id="contenedor-cuestionario"
-          class="seccion"
-          style="text-align: center"
-        >
-          <!-- Aquí se carga pagina_1.html, pagina_2.html, etc. -->
-        </div>
-      </form>
     </div>
 
-    <!-- Bootstrap JS (tooltips, tabs, modals) -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>
+  </div>
+</nav>
 
-    <script>
-      /* ============================================================
-       Datos básicos de la URL
-       (siempre conviene leerlos así para no depender de variables viejas)
-       ============================================================ */
-      const params = new URLSearchParams(window.location.search);
-      const cid = params.get("cid");
-      const folio = params.get("folio");
+<div class="seccion">
+  <form id="form-cuestionario">
+    <div id="contenedor-cuestionario"></div>
+  </form>
+</div>
 
-      /* ============================================================
-       Variables de estado
-       ============================================================ */
-      let seccionActual = 1;
-      let modalPendientes = null;
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>
 
-      /* ============================================================
-       Deja bonita la pestaña activa (solo estilo)
-       ============================================================ */
-      function marcarActivo(numero) {
-        document
-          .querySelectorAll(".nav-link")
-          .forEach((a) => a.classList.remove("active"));
-        document
-          .querySelectorAll(".nav-link")
-          [numero - 1]?.classList.add("active");
-      }
+<!-- Utils globales -->
+<script defer src="js/shared/utils.js"></script>
 
-      /* ============================================================
-       Carga una sección completa (pagina_X.html)
-       ============================================================ */
-      function cargarCuestionario(numero) {
-        seccionActual = numero;
+<!-- Invitado -->
+<script type="module" src="js/invitado/main.js"></script>
 
-        fetch(`pagina_${numero}.html`, { cache: "no-store" })
-          .then((r) => r.text())
-          .then(async (html) => {
-            // Inyectamos el HTML de la sección
-            document.getElementById("contenedor-cuestionario").innerHTML = html;
-            marcarActivo(numero);
-
-            // 1) Precargamos respuestas y evidencias desde BD
-            await cargarRespuestasSeccion();
-
-            // 2) Bloqueamos edición (revisor = solo lectura)
-            bloquearInputs();
-
-            // 3) Ocultamos elementos sobrantes
-            ocultarElementos();
-
-            // 4) Convierte los inputs a parrafos
-            convertirInputsAParrafos();
-          })
-          .catch((err) => {
-            console.error(err);
-            document.getElementById("contenedor-cuestionario").innerHTML =
-              "<p>Error al cargar el cuestionario.</p>";
-          });
-      }
-
-      /* ============================================================
-       Precargar respuestas + evidencias desde el backend del preparador
-       Endpoint: ../php/obtener_respuestas.php
-       ============================================================ */
-      async function cargarRespuestasSeccion() {
-        const seccion = `pagina_${seccionActual}`;
-
-        const url = new URL(
-          "../php/obtener_respuestas.php",
-          window.location.href,
-        );
-        if (cid) url.searchParams.set("cid", cid);
-        if (folio) url.searchParams.set("folio", folio);
-        url.searchParams.set("seccion", seccion);
-
-        const resp = await fetch(url.toString(), { cache: "no-store" });
-        const data = await resp.json();
-
-        if (!resp.ok || !data.ok) {
-          console.error("Error al obtener respuestas:", data);
-          return;
-        }
-
-        // Creamos un mapa pregunta -> datos para buscar rápido
-        const mapa = new Map();
-        for (const r of data.respuestas) {
-          mapa.set(String(r.pregunta), r);
-        }
-
-        const form = document.getElementById("form-cuestionario");
-        const bloques = form.querySelectorAll(".pregunta[data-pregunta]");
-
-        bloques.forEach((b) => {
-          const num = b.getAttribute("data-pregunta");
-          const guardado = mapa.get(num);
-
-          const sel = b.querySelector(".respuesta");
-          const txt = b.querySelector(".comentarios");
-
-          // Pintamos respuesta y comentarios
-          if (guardado) {
-            if (sel) sel.value = guardado.respuesta ?? "";
-            if (txt) txt.value = guardado.comentarios ?? "";
-          } else {
-            if (sel) sel.value = "";
-            if (txt) txt.value = "";
-          }
-
-          // Pintamos evidencias
-          let evidencias = [];
-          if (guardado && guardado.nom_evidencia) {
-            try {
-              evidencias = JSON.parse(guardado.nom_evidencia) || [];
-            } catch {
-              evidencias = [];
-            }
-          }
-
-          pintarEvidencias(b, evidencias);
-        });
-      }
-
-      /* ============================================================
-       Mostrar evidencias como links
-       Nota: aquí solo se ven/descargan; no se borran.
-       ============================================================ */
-      function pintarEvidencias(bloquePregunta, evidencias) {
-        const cont = bloquePregunta.querySelector(".evidencias-guardadas");
-        if (!cont) return;
-
-        if (!Array.isArray(evidencias) || evidencias.length === 0) {
-          cont.innerHTML =
-            "<span class='text-muted'>Sin evidencias guardadas.</span>";
-          return;
-        }
-
-        const items = evidencias
-          .map((ev) => {
-            const name = escapeHtml(ev.name || "archivo");
-            const url = escapeHtml(ev.url || "#");
-            return `<li><a href="../${url}" target="_blank" rel="noopener">${name}</a></li>`;
-          })
-          .join("");
-
-        cont.innerHTML = `
-        <div><strong>Evidencias guardadas:</strong></div>
-        <ul class="mb-0">${items}</ul>
-      `;
-      }
-
-      /* ============================================================
-       Bloquear inputs para que el revisor no modifique nada del cuestionario
-       ============================================================ */
-      function bloquearInputs() {
-        const form = document.getElementById("form-cuestionario");
-
-        form
-          .querySelectorAll(
-            "select.respuesta, textarea.comentarios, input.evidencia",
-          )
-          .forEach((el) => {
-            el.disabled = true;
-          });
-
-        // Si alguna plantilla trae el botón de “Guardar” del preparador, lo ocultamos
-        const btnGuardar = document.querySelector(
-          "#contenedor-cuestionario #btnGuardar",
-        );
-        if (btnGuardar) btnGuardar.style.display = "none";
-      }
-
-     /* ============================================================
-      Ocultamos elementos que solo deberian ser visibles para el preparador
-      ============================================================ */
-      function ocultarElementos() {
-        // Ocultar todos los .dropApoyo dentro de #contenedor-cuestionario
-        const drops = document.querySelectorAll('#contenedor-cuestionario .contDrops');
-        drops.forEach(el => {
-          el.style.display = 'none';
-        });
-
-        //Oculta el input para subir documentos como evidencia
-        const ocultarEvidencia = document.querySelectorAll('#contenedor-cuestionario .inputEvidencia')
-        ocultarEvidencia.forEach(el => {
-          el.style.display = 'none';
-        });
-
-        //Oculta el lavel de cada textarea
-        const ocultarLabel = document.querySelectorAll('#contenedor-cuestionario .labelComentarios')
-        ocultarLabel.forEach(el => {
-          el.style.display = 'none';
-        });
-       }
-
-      /* ============================================================
-       Cambia los inputs por parrafos para mejorar la lecutra
-       ============================================================ */
-      function convertirInputsAParrafos() {
-        const form = document.getElementById("form-cuestionario");
-        const bloques = form.querySelectorAll(".pregunta[data-pregunta]");
-
-        bloques.forEach((b) => {
-          const sel = b.querySelector("select.respuesta");
-          const txt = b.querySelector("textarea.comentarios");
-
-          // ---- SELECT -> <p> ----
-          if (sel) {
-            // Texto visible del option seleccionado
-            const optionText =
-              sel.selectedOptions?.[0]?.textContent?.trim() || "";
-            const pSel = document.createElement("p");
-            pSel.className = "respuesta-p form-control-plaintext mb-2";
-            pSel.textContent = optionText || "—";
-
-            // Ocultamos el select (o podrías eliminarlo)
-            sel.style.display = "none";
-            sel.insertAdjacentElement("afterend", pSel);
-          }
-
-          // ---- TEXTAREA -> <p> ----
-          if (txt) {
-            const pTxt = document.createElement("p");
-            pTxt.className = "comentarios-p form-control-plaintext";
-            // respeta saltos de línea:
-            pTxt.style.whiteSpace = "pre-wrap";
-            pTxt.textContent = (txt.value || "").trim() || "—";
-
-            txt.style.display = "none";
-            txt.insertAdjacentElement("afterend", pTxt);
-          }
-        });
-      }
-
-      /* ============================================================
-       Escape HTML básico para imprimir texto de BD sin riesgos
-       ============================================================ */
-      function escapeHtml(str) {
-        return String(str ?? "")
-          .replaceAll("&", "&amp;")
-          .replaceAll("<", "&lt;")
-          .replaceAll(">", "&gt;")
-          .replaceAll('"', "&quot;")
-          .replaceAll("'", "&#039;");
-      }
-
-      /* ============================================================
-       Arranque:
-       - Tooltips
-       - Sesión/rol
-       - Carga sección 1
-       ============================================================ */
-      document.addEventListener("DOMContentLoaded", async () => {
-        document
-          .querySelectorAll('[data-bs-toggle="tooltip"]')
-          .forEach((el) => new bootstrap.Tooltip(el));
-        cargarCuestionario(1);
-      });
-    </script>
-  </body>
+</body>
 </html>
